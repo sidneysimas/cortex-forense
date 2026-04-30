@@ -84,6 +84,22 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-neon": "pulse-neon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "float": "float 6s ease-in-out infinite",
+      },
+      keyframes: {
+        "pulse-neon": {
+          "0%, 100%": { opacity: "1", filter: "brightness(1.2) drop-shadow(0 0 10px rgba(0, 255, 255, 0.8))" },
+          "50%": { opacity: "0.8", filter: "brightness(0.8) drop-shadow(0 0 2px rgba(0, 255, 255, 0.2))" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+      },
+      backgroundImage: {
+        "cyber-grid": "linear-gradient(to right, rgba(0, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 255, 255, 0.05) 1px, transparent 1px)",
+        "neon-gradient": "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))",
       },
     },
   },
