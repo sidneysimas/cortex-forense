@@ -1,25 +1,13 @@
-   file_path?: string;
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { sendNotification } from "@/lib/notifications";
-import { logEvidenceAccess } from "@/lib/audit";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  Loader2, Database, Eye, ShieldCheck, FileDown, FileText, Link2,
+ import { useState, useEffect } from "react";
+ import { useSearchParams } from "react-router-dom";
+ import { supabase } from "@/integrations/supabase/client";
+ import { sendNotification } from "@/lib/notifications";
+ import { logEvidenceAccess } from "@/lib/audit";
+ import { useAuth } from "@/hooks/useAuth";
+ import {
+   Loader2, Database, Eye, ShieldCheck, FileDown, FileText, Link2,
    Filter, History, Award, BookOpen, Users, Clock, Fingerprint, Download
-   const handleDownloadOriginal = async (ev: Evidence) => {
-     if (!ev.file_path) return;
-     const { data, error } = await supabase.storage.from("forensic-files").createSignedUrl(ev.file_path, 60);
-     if (error) {
-       toast({ title: "Erro ao baixar arquivo", description: error.message, variant: "destructive" });
-       return;
-     }
-     window.open(data.signedUrl, "_blank");
-     await logEvidenceAccess(ev.id, "export", "Download do arquivo original da evidência");
-   };
- 
-} from "lucide-react";
+ } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
