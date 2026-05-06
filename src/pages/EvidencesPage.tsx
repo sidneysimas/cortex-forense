@@ -416,6 +416,18 @@ const EvidencesPage = () => {
                 </div>
               )}
 
+              {selected.file_path && (
+                <div>
+                  <span className="text-muted-foreground font-medium">Arquivo Original:</span>
+                  <div className="mt-2 flex items-center gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-xl">
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadOriginal(selected)} className="gap-2 text-xs border-primary/20 hover:border-primary/50 transition-all">
+                      <Download className="h-3.5 w-3.5 text-primary" /> Baixar arquivo original
+                    </Button>
+                    <span className="text-[10px] text-white/30 font-mono truncate flex-1">{selected.file_path}</span>
+                  </div>
+                </div>
+              )}
+
               {/* ISO 27037 Metadata */}
               {isIsoCompliant(selected) && (
                 <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-3">
