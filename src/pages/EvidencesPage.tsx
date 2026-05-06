@@ -87,7 +87,15 @@ const EvidencesPage = () => {
       toast({ title: "Erro ao baixar arquivo", description: error.message, variant: "destructive" });
       return;
     }
-    window.open(data.signedUrl, "_blank");
+    
+    // Safer download using a temporary anchor
+    const link = document.createElement('a');
+    link.href = data.signedUrl;
+    link.setAttribute('download', ev.file_path.split('/').pop() || 'evidence');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     await logEvidenceAccess(ev.id, "export", "Download do arquivo original da evidência");
   };
 
