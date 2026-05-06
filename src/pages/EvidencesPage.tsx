@@ -35,6 +35,7 @@ interface Evidence {
   blockchain_network?: string;
   verification_url?: string;
   metadata?: any;
+  file_path?: string;
 }
 
 interface AccessLog {
@@ -78,6 +79,17 @@ const EvidencesPage = () => {
   const [certifying, setCertifying] = useState<string | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportingDocx, setExportingDocx] = useState<string | null>(null);
+
+  const handleDownloadOriginal = async (ev: Evidence) => {
+    if (!ev.file_path) return;
+    const { data, error } = await supabase.storage.from("forensic-files").createSignedUrl(ev.file_path, 60);
+    if (error) {
+      toast({ title: "Erro ao baixar arquivo", description: error.message, variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+    await logEvidenceAccess(ev.id, "export", "Download do arquivo original da evidência");
+  };
 
   // Filters
   const [filterModule, setFilterModule] = useState("all");
