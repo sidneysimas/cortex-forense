@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
-import { Loader2, FileText, Copy, Check, Code2, Save, Upload, X, File } from "lucide-react";
+import { Loader2, FileText, Copy, Check, Code2, Save, Upload, X, File, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { streamForensicAnalysis } from "@/lib/forensic-api";
 import { toast } from "@/hooks/use-toast";
 import { saveEvidence } from "@/lib/audit";
@@ -46,8 +47,63 @@ const PlagioCodigoPage = () => {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedCase, setSelectedCase] = useState("none");
+  
+  const [githubToken, setGithubToken] = useState("");
+  const [repoUrlA, setRepoUrlA] = useState("");
+  const [repoUrlB, setRepoUrlB] = useState("");
+  const [fetchingGithub, setFetchingGithub] = useState<"A" | "B" | null>(null);
+
   const fileRefA = useRef<HTMLInputElement>(null);
   const fileRefB = useRef<HTMLInputElement>(null);
+
+  const fetchGithubRepo = async (side: "A" | "B") => {
+    const url = side === "A" ? repoUrlA : repoUrlB;
+    if (!url) {
+      toast({ title: "Atenção", description: "Informe a URL do repositório GitHub.", variant: "destructive" });
+      return;
+    }
+
+    setFetchingGithub(side);
+    try {
+      const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
+      if (!match) throw new Error("URL do GitHub inválida. Use o formato: https://github.com/usuario/repositorio");
+      
+      const [, owner, repo] = match;
+      const headers: Record<string, string> = { "Accept": "application/vnd.github.v3+json" };
+      if (githubToken) headers["Authorization"] = `token ${githubToken}`;
+
+      const apiURL = `https://api.github.com/repos/${owner}/${repo.replace(".git", "")}/contents`;
+      const resp = await fetch(apiURL, { headers });
+      
+      if (!resp.ok) {
+        if (resp.status === 401 || resp.status === 403) throw new Error("Acesso negado. Verifique seu Token (necessário para repositórios privados).");
+        throw new Error(`Erro ao acessar GitHub: ${resp.statusText}`);
+      }
+
+      const contents = await resp.json();
+      const codeFiles = contents.filter((f: any) => 
+        f.type === "file" && SUPPORTED_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext))
+      ).slice(0, 5);
+
+      if (codeFiles.length === 0) throw new Error("Nenhum arquivo de código suportado encontrado na raiz do repositório.");
+
+      let combinedCode = "";
+      for (const file of codeFiles) {
+        const fResp = await fetch(file.download_url);
+        const text = await fResp.text();
+        combinedCode += `// ARQUIVO: ${file.name}\n${text}\n\n`;
+      }
+
+      if (side === "A") setCodeA(combinedCode);
+      else setCodeB(combinedCode);
+
+      toast({ title: "Repositório carregado", description: `${codeFiles.length} arquivos extraídos do GitHub.` });
+    } catch (err: any) {
+      toast({ title: "Erro no GitHub", description: err.message, variant: "destructive" });
+    } finally {
+      setFetchingGithub(null);
+    }
+  };
 
   const handleFileSelect = (side: "A" | "B") => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -119,9 +175,9 @@ const PlagioCodigoPage = () => {
     fileRef: React.RefObject<HTMLInputElement>,
     placeholder: string,
   ) => (
-    <div>
+    <div className="w-full">
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-sm font-medium text-foreground">{label}</label>
+        {label && <label className="text-sm font-medium text-foreground">{label}</label>}
         <input
           ref={fileRef}
           type="file"
@@ -133,7 +189,7 @@ const PlagioCodigoPage = () => {
           variant="outline"
           size="sm"
           onClick={() => fileRef.current?.click()}
-          className="gap-1.5 h-7 text-xs border-border text-muted-foreground hover:text-foreground"
+          className="gap-1.5 h-7 text-xs border-border text-muted-foreground hover:text-foreground ml-auto"
         >
           <Upload className="h-3 w-3" />
           Enviar arquivo
@@ -167,16 +223,80 @@ const PlagioCodigoPage = () => {
         Compare dois trechos de código para identificar similaridades, cópias e plágio.
       </p>
       <p className="text-xs text-muted-foreground/70 mb-6">
-        Suporte a arquivos de até 100 MB — cole o código diretamente ou envie arquivos-fonte.
+        Suporte a GitHub, arquivos locais ou texto direto.
       </p>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
-          <div className="glass-card rounded-xl p-5 space-y-4">
-            {renderCodeInput("A", "Código A — Original / Referência", codeA, setCodeA, fileA, fileRefA, "Cole aqui o código-fonte original ou de referência...")}
-            {renderCodeInput("B", "Código B — Suspeito", codeB, setCodeB, fileB, fileRefB, "Cole aqui o código-fonte suspeito de plágio...")}
+          <div className="glass-card rounded-xl p-5 space-y-6">
+            <div className="space-y-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+              <div className="flex items-center gap-2 mb-1">
+                <Github className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-bold text-white">Integração GitHub</h3>
+                <span className="text-[10px] text-white/20 uppercase tracking-widest ml-auto">Autenticação opcional</span>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Personal Access Token</label>
+                <Input 
+                  type="password" 
+                  placeholder="ghp_xxxxxxxxxxxx" 
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  className="bg-black/40 border-white/10 h-10 rounded-xl focus:border-primary/40 transition-all text-xs"
+                />
+                <p className="text-[10px] text-white/20">Necessário para repositórios privados ou para evitar limites de taxa.</p>
+              </div>
+            </div>
 
-            <div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-bold text-white/80">Código A — Repositório ou Texto</label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="URL do Repo A" 
+                    value={repoUrlA}
+                    onChange={(e) => setRepoUrlA(e.target.value)}
+                    className="h-8 text-xs bg-white/5 border-white/5 w-48 rounded-lg"
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => fetchGithubRepo("A")} 
+                    disabled={fetchingGithub === "A"}
+                    className="h-8 px-3 bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all rounded-lg"
+                  >
+                    {fetchingGithub === "A" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </div>
+              {renderCodeInput("A", "", codeA, setCodeA, fileA, fileRefA, "Cole o código ou carregue via GitHub...")}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-bold text-white/80">Código B — Repositório ou Texto</label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="URL do Repo B" 
+                    value={repoUrlB}
+                    onChange={(e) => setRepoUrlB(e.target.value)}
+                    className="h-8 text-xs bg-white/5 border-white/5 w-48 rounded-lg"
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => fetchGithubRepo("B")} 
+                    disabled={fetchingGithub === "B"}
+                    className="h-8 px-3 bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all rounded-lg"
+                  >
+                    {fetchingGithub === "B" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </div>
+              {renderCodeInput("B", "", codeB, setCodeB, fileB, fileRefB, "Cole o código ou carregue via GitHub...")}
+            </div>
+
+            <div className="pt-2">
               <label className="text-sm font-medium text-foreground mb-1.5 block">
                 Contexto adicional <span className="text-muted-foreground font-normal">(opcional)</span>
               </label>
