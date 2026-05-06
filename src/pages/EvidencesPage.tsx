@@ -367,28 +367,17 @@ const EvidencesPage = () => {
                           {certifying === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => handleExportPdf(ev)} disabled={exporting === ev.id} className="gap-1 text-primary h-7 px-2" title="PDF">
-                        {exporting === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                      </Button>
+                       <Button variant="ghost" size="sm" onClick={() => handleExportPdf(ev)} disabled={exporting === ev.id} className="gap-1 text-primary h-7 px-2" title="PDF">
+                         {exporting === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                       </Button>
                        <Button variant="ghost" size="sm" onClick={() => handleExportDocx(ev)} disabled={exportingDocx === ev.id} className="gap-1 text-primary h-7 px-2" title="Word">
+                         {exportingDocx === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                       </Button>
                        {ev.file_path && (
                          <Button variant="ghost" size="sm" onClick={() => handleDownloadOriginal(ev)} className="gap-1 text-primary h-7 px-2" title="Download Original">
                            <Download className="h-3.5 w-3.5" />
                          </Button>
                        )}
-               {selected.file_path && (
-                 <div>
-                   <span className="text-muted-foreground font-medium">Arquivo Original:</span>
-                   <div className="mt-1 flex items-center gap-2">
-                     <Button variant="outline" size="sm" onClick={() => handleDownloadOriginal(selected)} className="gap-2 text-xs">
-                       <Download className="h-3.5 w-3.5" /> Baixar arquivo original
-                     </Button>
-                     <span className="text-[10px] text-muted-foreground font-mono">{selected.file_path}</span>
-                   </div>
-                 </div>
-               )}
-                        {exportingDocx === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-                      </Button>
                       <Link to={`/dashboard/versoes?id=${ev.id}`}>
                         <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 px-2" title="Histórico">
                           <History className="h-3.5 w-3.5" />
