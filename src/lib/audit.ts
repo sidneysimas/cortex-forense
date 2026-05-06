@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+ import { supabase } from "@/integrations/supabase/client";
 import { sendNotification } from "@/lib/notifications";
 
 /**
@@ -75,6 +75,7 @@ export async function saveEvidence({
   title,
   inputContent,
   resultContent,
+   filePath,
   fileHash,
   metadata,
   caseId,
@@ -83,6 +84,7 @@ export async function saveEvidence({
   title: string;
   inputContent: string;
   resultContent: string;
+   filePath?: string;
   fileHash?: string;
   metadata?: Record<string, unknown>;
   caseId?: string;
@@ -129,6 +131,7 @@ export async function saveEvidence({
     input_content: inputContent,
     result_content: resultContent,
     file_hash: computedHash,
+     file_path: filePath,
     metadata: iso27037Metadata,
     ...(caseId ? { case_id: caseId } : {}),
   } as any]).select("id").single();
@@ -143,6 +146,7 @@ export async function saveEvidence({
       input_content: inputContent,
       result_content: resultContent,
       file_hash: computedHash,
+     file_path: filePath,
       metadata: iso27037Metadata,
       change_summary: "Versão inicial — Aquisição conforme ISO 27037",
     } as any]);

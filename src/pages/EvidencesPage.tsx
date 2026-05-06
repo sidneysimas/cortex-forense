@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { sendNotification } from "@/lib/notifications";
-import { logEvidenceAccess } from "@/lib/audit";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  Loader2, Database, Eye, ShieldCheck, FileDown, FileText, Link2,
-  Filter, History, Award, BookOpen, Users, Clock, Fingerprint
-} from "lucide-react";
+ import { useState, useEffect } from "react";
+ import { useSearchParams } from "react-router-dom";
+ import { supabase } from "@/integrations/supabase/client";
+ import { sendNotification } from "@/lib/notifications";
+ import { logEvidenceAccess } from "@/lib/audit";
+ import { useAuth } from "@/hooks/useAuth";
+ import {
+   Loader2, Database, Eye, ShieldCheck, FileDown, FileText, Link2,
+   Filter, History, Award, BookOpen, Users, Clock, Fingerprint, Download
+ } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ interface Evidence {
   blockchain_network?: string;
   verification_url?: string;
   metadata?: any;
+  file_path?: string;
 }
 
 interface AccessLog {
@@ -78,6 +79,17 @@ const EvidencesPage = () => {
   const [certifying, setCertifying] = useState<string | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportingDocx, setExportingDocx] = useState<string | null>(null);
+
+  const handleDownloadOriginal = async (ev: Evidence) => {
+    if (!ev.file_path) return;
+    const { data, error } = await supabase.storage.from("forensic-files").createSignedUrl(ev.file_path, 60);
+    if (error) {
+      toast({ title: "Erro ao baixar arquivo", description: error.message, variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+    await logEvidenceAccess(ev.id, "export", "Download do arquivo original da evidência");
+  };
 
   // Filters
   const [filterModule, setFilterModule] = useState("all");
@@ -355,12 +367,17 @@ const EvidencesPage = () => {
                           {certifying === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => handleExportPdf(ev)} disabled={exporting === ev.id} className="gap-1 text-primary h-7 px-2" title="PDF">
-                        {exporting === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleExportDocx(ev)} disabled={exportingDocx === ev.id} className="gap-1 text-primary h-7 px-2" title="Word">
-                        {exportingDocx === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-                      </Button>
+                       <Button variant="ghost" size="sm" onClick={() => handleExportPdf(ev)} disabled={exporting === ev.id} className="gap-1 text-primary h-7 px-2" title="PDF">
+                         {exporting === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                       </Button>
+                       <Button variant="ghost" size="sm" onClick={() => handleExportDocx(ev)} disabled={exportingDocx === ev.id} className="gap-1 text-primary h-7 px-2" title="Word">
+                         {exportingDocx === ev.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                       </Button>
+                       {ev.file_path && (
+                         <Button variant="ghost" size="sm" onClick={() => handleDownloadOriginal(ev)} className="gap-1 text-primary h-7 px-2" title="Download Original">
+                           <Download className="h-3.5 w-3.5" />
+                         </Button>
+                       )}
                       <Link to={`/dashboard/versoes?id=${ev.id}`}>
                         <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 px-2" title="Histórico">
                           <History className="h-3.5 w-3.5" />
@@ -396,6 +413,18 @@ const EvidencesPage = () => {
                 <div>
                   <span className="text-muted-foreground font-medium">Hash SHA-256:</span>
                   <code className="block mt-1 p-2 bg-muted/50 rounded text-xs font-mono break-all">{selected.file_hash}</code>
+                </div>
+              )}
+
+              {selected.file_path && (
+                <div>
+                  <span className="text-muted-foreground font-medium">Arquivo Original:</span>
+                  <div className="mt-2 flex items-center gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-xl">
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadOriginal(selected)} className="gap-2 text-xs border-primary/20 hover:border-primary/50 transition-all">
+                      <Download className="h-3.5 w-3.5 text-primary" /> Baixar arquivo original
+                    </Button>
+                    <span className="text-[10px] text-white/30 font-mono truncate flex-1">{selected.file_path}</span>
+                  </div>
                 </div>
               )}
 
