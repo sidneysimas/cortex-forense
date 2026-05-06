@@ -149,6 +149,7 @@ export type Database = {
           created_at: string
           evidence_id: string
           file_hash: string | null
+          file_path: string | null
           id: string
           input_content: string | null
           metadata: Json | null
@@ -162,6 +163,7 @@ export type Database = {
           created_at?: string
           evidence_id: string
           file_hash?: string | null
+          file_path?: string | null
           id?: string
           input_content?: string | null
           metadata?: Json | null
@@ -175,6 +177,7 @@ export type Database = {
           created_at?: string
           evidence_id?: string
           file_hash?: string | null
+          file_path?: string | null
           id?: string
           input_content?: string | null
           metadata?: Json | null
@@ -200,6 +203,7 @@ export type Database = {
           case_id: string | null
           created_at: string
           file_hash: string | null
+          file_path: string | null
           id: string
           input_content: string | null
           metadata: Json | null
@@ -218,6 +222,7 @@ export type Database = {
           case_id?: string | null
           created_at?: string
           file_hash?: string | null
+          file_path?: string | null
           id?: string
           input_content?: string | null
           metadata?: Json | null
@@ -236,6 +241,7 @@ export type Database = {
           case_id?: string | null
           created_at?: string
           file_hash?: string | null
+          file_path?: string | null
           id?: string
           input_content?: string | null
           metadata?: Json | null
