@@ -28,6 +28,7 @@ const ForensicModule = ({ type, title, subtitle, placeholder, supportsImage = fa
    const [selectedCase, setSelectedCase] = useState("none");
    const [filePath, setFilePath] = useState<string | null>(null);
    const [fileHash, setFileHash] = useState<string | null>(null);
+   const [fileName, setFileName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,19 +44,28 @@ const ForensicModule = ({ type, title, subtitle, placeholder, supportsImage = fa
   };
 
   const handleAnalyze = async () => {
-    if (!content.trim() && !imageBase64) {
+     if (!content.trim() && !imageBase64 && !filePath) {
       toast({ title: "Atenção", description: "Forneça conteúdo ou imagem para análise.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     setResult("");
-    await logAudit("analysis_started", type, { contentLength: content.length });
+     await logAudit("analysis_started", type, { 
+       contentLength: content.length,
+       hasFile: !!filePath,
+       fileName
+     });
 
+     let finalContent = content.trim();
+     if (filePath && fileName) {
+       finalContent = `[ARQUIVO ENVIADO: ${fileName}]\n\n${finalContent}`;
+     }
+ 
     let fullResult = "";
     await streamForensicAnalysis({
       type,
-      content: content.trim(),
+      content: finalContent,
       imageBase64: imageBase64 || undefined,
       onDelta: (text) => {
         fullResult += text;
@@ -125,13 +135,15 @@ const ForensicModule = ({ type, title, subtitle, placeholder, supportsImage = fa
  
                <FileUploader 
                  moduleType={type}
-                 onFileUploaded={(path, hash) => {
+                 onFileUploaded={(path, hash, name) => {
                    setFilePath(path);
                    setFileHash(hash);
+                   setFileName(name);
                  }}
                  onFileRemoved={() => {
                    setFilePath(null);
                    setFileHash(null);
+                   setFileName(null);
                  }}
                  label={type === 'hives' ? "Carregar Hive do Windows (SAM, SYSTEM, etc.)" : "Carregar arquivo para análise"}
                />
