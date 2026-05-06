@@ -1,4 +1,4 @@
- import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { sendNotification } from "@/lib/notifications";
 
 /**
@@ -75,7 +75,7 @@ export async function saveEvidence({
   title,
   inputContent,
   resultContent,
-   filePath,
+  filePath,
   fileHash,
   metadata,
   caseId,
@@ -84,7 +84,7 @@ export async function saveEvidence({
   title: string;
   inputContent: string;
   resultContent: string;
-   filePath?: string;
+  filePath?: string;
   fileHash?: string;
   metadata?: Record<string, unknown>;
   caseId?: string;
@@ -92,8 +92,8 @@ export async function saveEvidence({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // ISO 27037: gerar hash automaticamente se não fornecido
-  const computedHash = fileHash || await generateSHA256(inputContent + resultContent);
+  // ISO 27037: Use provided fileHash (direct source) or compute one from textual input
+  const sourceHash = fileHash || await generateSHA256(inputContent);
   const deviceInfo = getDeviceInfo();
 
   const iso27037Metadata = {
@@ -108,18 +108,18 @@ export async function saveEvidence({
         justificabilidade: "Ação registrada com agente e dispositivo identificados",
       },
       acquisition: {
-        method: `Aquisição via módulo ${module} do Cortex Forense`,
+        method: filePath ? `Preservação de arquivo via módulo ${module}` : `Input textual via módulo ${module}`,
         agent: user.email,
         agentId: user.id,
         timestamp: new Date().toISOString(),
         device: deviceInfo,
         hashAlgorithm: "SHA-256",
-        hashValue: computedHash,
+        hashValue: sourceHash,
       },
       chainOfCustody: {
         initialCustodian: user.email,
         acquisitionTime: new Date().toISOString(),
-        preservationMethod: "Armazenamento criptografado em nuvem com controle de acesso RLS",
+        preservationMethod: "Armazenamento AES-256 em nuvem com logs de acesso imutáveis",
       },
     },
   };
@@ -130,8 +130,8 @@ export async function saveEvidence({
     title,
     input_content: inputContent,
     result_content: resultContent,
-    file_hash: computedHash,
-     file_path: filePath,
+    file_hash: sourceHash,
+    file_path: filePath,
     metadata: iso27037Metadata,
     ...(caseId ? { case_id: caseId } : {}),
   } as any]).select("id").single();
@@ -145,8 +145,8 @@ export async function saveEvidence({
       title,
       input_content: inputContent,
       result_content: resultContent,
-      file_hash: computedHash,
-     file_path: filePath,
+      file_hash: sourceHash,
+      file_path: filePath,
       metadata: iso27037Metadata,
       change_summary: "Versão inicial — Aquisição conforme ISO 27037",
     } as any]);
@@ -157,14 +157,15 @@ export async function saveEvidence({
 
   await logAudit("evidence_saved", module, {
     title,
-    hash: computedHash,
+    hash: sourceHash,
     iso27037_compliant: true,
+    has_file: !!filePath
   });
 
   sendNotification({
     type: "analysis_complete",
     subject: `Evidência registrada: ${title}`,
-    body: `Uma nova evidência digital foi registrada na cadeia de custódia conforme ABNT NBR ISO/IEC 27037:2013.\n\nMódulo: ${module}\nTítulo: ${title}\nHash SHA-256: ${computedHash}\nAgente: ${user.email}\nData: ${new Date().toLocaleString("pt-BR")}\n\nPrincípios atendidos: Auditabilidade, Repetibilidade, Reprodutibilidade, Justificabilidade`,
+    body: `Uma nova evidência digital foi registrada na cadeia de custódia conforme ABNT NBR ISO/IEC 27037:2013.\n\nMódulo: ${module}\nTítulo: ${title}\nHash SHA-256: ${sourceHash}\nAgente: ${user.email}\nData: ${new Date().toLocaleString("pt-BR")}`,
     evidenceId: inserted?.id,
     caseId,
   });

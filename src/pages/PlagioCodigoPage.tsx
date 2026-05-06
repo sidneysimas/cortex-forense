@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
- import { Loader2, FileText, Copy, Check, Code2, Save, Upload, X, File, Github } from "lucide-react";
- import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { Loader2, Copy, Check, Code2, Save, X, Github } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -9,39 +9,9 @@ import { toast } from "@/hooks/use-toast";
 import { saveEvidence } from "@/lib/audit";
 import CaseSelector from "@/components/dashboard/CaseSelector";
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-
-const SUPPORTED_EXTENSIONS = [
-  ".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".c", ".cpp", ".h", ".hpp",
-  ".cs", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".scala", ".r",
-  ".sql", ".html", ".css", ".scss", ".less", ".xml", ".json", ".yaml", ".yml",
-  ".sh", ".bash", ".ps1", ".bat", ".cmd", ".lua", ".perl", ".pl",
-  ".m", ".mm", ".dart", ".vue", ".svelte", ".zig", ".nim", ".v",
-  ".asm", ".s", ".f90", ".f95", ".pas", ".vb", ".vbs",
-  ".txt", ".md", ".csv", ".log", ".ini", ".cfg", ".conf", ".toml",
-  ".dockerfile", ".makefile", ".cmake", ".gradle", ".sbt",
-];
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-async function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
-    reader.readAsText(file);
-  });
-}
-
 const PlagioCodigoPage = () => {
   const [codeA, setCodeA] = useState("");
   const [codeB, setCodeB] = useState("");
-  const [fileA, setFileA] = useState<File | null>(null);
-  const [fileB, setFileB] = useState<File | null>(null);
   const [context, setContext] = useState("");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,9 +24,6 @@ const PlagioCodigoPage = () => {
   const [repoUrlB, setRepoUrlB] = useState("");
   const [fetchingGithub, setFetchingGithub] = useState<"A" | "B" | null>(null);
 
-  const fileRefA = useRef<HTMLInputElement>(null);
-  const fileRefB = useRef<HTMLInputElement>(null);
-
   const fetchGithubRepo = async (side: "A" | "B") => {
     const url = side === "A" ? repoUrlA : repoUrlB;
     if (!url) {
@@ -66,14 +33,18 @@ const PlagioCodigoPage = () => {
 
     setFetchingGithub(side);
     try {
-      const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
-      if (!match) throw new Error("URL do GitHub inválida. Use o formato: https://github.com/usuario/repositorio");
+      // Robust GitHub URL parsing
+      const cleanUrl = url.trim().replace(/\/$/, "");
+      const urlMatch = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+      if (!urlMatch) throw new Error("URL do GitHub inválida. Use o formato: github.com/usuario/repositorio");
       
-      const [, owner, repo] = match;
+      const owner = urlMatch[1];
+      const repo = urlMatch[2].replace(".git", "");
+      
       const headers: Record<string, string> = { "Accept": "application/vnd.github.v3+json" };
       if (githubToken) headers["Authorization"] = `token ${githubToken}`;
 
-      const apiURL = `https://api.github.com/repos/${owner}/${repo.replace(".git", "")}/contents`;
+      const apiURL = `https://api.github.com/repos/${owner}/${repo}/contents`;
       const resp = await fetch(apiURL, { headers });
       
       if (!resp.ok) {
@@ -82,9 +53,10 @@ const PlagioCodigoPage = () => {
       }
 
       const contents = await resp.json();
+      // Improved file filtering (ignore binaries, focus on code)
       const codeFiles = contents.filter((f: any) => 
-        f.type === "file" && SUPPORTED_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext))
-      ).slice(0, 5);
+        f.type === "file" && /\.(py|js|ts|tsx|jsx|java|c|cpp|h|cs|go|rs|php|swift|kt|sql|html|css|sh|lua|txt)$/i.test(f.name)
+      ).slice(0, 10);
 
       if (codeFiles.length === 0) throw new Error("Nenhum arquivo de código suportado encontrado na raiz do repositório.");
 
@@ -106,48 +78,16 @@ const PlagioCodigoPage = () => {
     }
   };
 
-  const handleFileSelect = (side: "A" | "B") => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > MAX_FILE_SIZE) {
-      toast({ title: "Arquivo muito grande", description: `O limite é 100 MB. Este arquivo tem ${formatFileSize(file.size)}.`, variant: "destructive" });
-      return;
-    }
-
-    if (side === "A") {
-      setFileA(file);
-      readFileAsText(file).then(setCodeA).catch(() => {
-        toast({ title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo.", variant: "destructive" });
-        setFileA(null);
-      });
-    } else {
-      setFileB(file);
-      readFileAsText(file).then(setCodeB).catch(() => {
-        toast({ title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo.", variant: "destructive" });
-        setFileB(null);
-      });
-    }
-  };
-
-  const removeFile = (side: "A" | "B") => {
-    if (side === "A") { setFileA(null); setCodeA(""); }
-    else { setFileB(null); setCodeB(""); }
-  };
-
   const handleAnalyze = async () => {
     if (!codeA.trim() || !codeB.trim()) {
-      toast({ title: "Atenção", description: "Forneça ambos os códigos (cole ou envie arquivos) para comparação.", variant: "destructive" });
+      toast({ title: "Atenção", description: "Importe ambos os repositórios para comparação.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     setResult("");
 
-    const fileInfoA = fileA ? `[Arquivo: ${fileA.name}, ${formatFileSize(fileA.size)}]` : "";
-    const fileInfoB = fileB ? `[Arquivo: ${fileB.name}, ${formatFileSize(fileB.size)}]` : "";
-
-    const prompt = `${context ? `CONTEXTO: ${context}\n\n` : ""}CÓDIGO A (ORIGINAL/REFERÊNCIA) ${fileInfoA}:\n\`\`\`\n${codeA}\n\`\`\`\n\nCÓDIGO B (SUSPEITO) ${fileInfoB}:\n\`\`\`\n${codeB}\n\`\`\``;
+    const prompt = `[ANÁLISE PERICIAL DE PLÁGIO DE SOFTWARE]\n\nREPOSITÓRIO A (REFERÊNCIA): ${repoUrlA}\nREPOSITÓRIO B (SUSPEITO): ${repoUrlB}\nCONTEXTO: ${context}\n\nCÓDIGO A:\n${codeA.slice(0, 15000)}\n\nCÓDIGO B:\n${codeB.slice(0, 15000)}`;
 
     await streamForensicAnalysis({
       type: "plagio-codigo" as any,
@@ -167,54 +107,51 @@ const PlagioCodigoPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-   const renderCodeStatus = (side: "A" | "B", code: string, repoUrl: string) => {
-     if (!code) return (
-       <div className="flex flex-col items-center justify-center h-[160px] bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
-         <Github className="h-8 w-8 text-white/10 mb-2" />
-         <p className="text-xs text-white/30 uppercase tracking-widest font-bold">Aguardando Importação</p>
-       </div>
-     );
- 
-     return (
-       <div className="relative group">
-         <div className="absolute top-3 right-3 z-10 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] uppercase font-bold">
-             Importado via GitHub
-           </Badge>
-           <Button 
-             variant="ghost" 
-             size="sm" 
-             onClick={() => side === "A" ? setCodeA("") : setCodeB("")}
-             className="h-6 w-6 p-0 rounded-full bg-black/60 hover:bg-red-500/20 text-white/40 hover:text-red-400"
-           >
-             <X className="h-3 w-3" />
-           </Button>
-         </div>
-         <div className="min-h-[160px] max-h-[160px] overflow-auto bg-white/[0.03] border border-white/10 rounded-2xl p-4 font-mono text-[11px] text-white/60 leading-relaxed custom-scrollbar">
-           {code}
-         </div>
-       </div>
-     );
-   };
+  const renderCodeStatus = (side: "A" | "B", code: string) => {
+    if (!code) return (
+      <div className="flex flex-col items-center justify-center h-[160px] bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
+        <Github className="h-8 w-8 text-white/10 mb-2" />
+        <p className="text-xs text-white/30 uppercase tracking-widest font-bold">Aguardando Importação</p>
+      </div>
+    );
+
+    return (
+      <div className="relative group">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] uppercase font-bold">
+            Importado via GitHub
+          </Badge>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => side === "A" ? setCodeA("") : setCodeB("")}
+            className="h-6 w-6 p-0 rounded-full bg-black/60 hover:bg-red-500/20 text-white/40 hover:text-red-400"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+        <div className="min-h-[160px] max-h-[160px] overflow-auto bg-white/[0.03] border border-white/10 rounded-2xl p-4 font-mono text-[11px] text-white/60 leading-relaxed custom-scrollbar">
+          {code}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
       <h1 className="font-display text-2xl font-bold mb-1">Análise de Plágio de Código-Fonte</h1>
-      <p className="text-muted-foreground mb-2">
-        Compare dois trechos de código para identificar similaridades, cópias e plágio.
-      </p>
-      <p className="text-xs text-muted-foreground/70 mb-6">
-        Suporte a GitHub, arquivos locais ou texto direto.
+      <p className="text-muted-foreground mb-6 text-sm">
+        Compare repositórios GitHub de forma segura para identificar similaridades e plágio.
       </p>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <div className="glass-card rounded-xl p-5 space-y-6">
-            <div className="space-y-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div className="space-y-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 shadow-premium-sm">
               <div className="flex items-center gap-2 mb-1">
                 <Github className="h-5 w-5 text-primary" />
                 <h3 className="text-sm font-bold text-white">Integração GitHub</h3>
-                <span className="text-[10px] text-white/20 uppercase tracking-widest ml-auto">Autenticação opcional</span>
+                <span className="text-[10px] text-white/20 uppercase tracking-widest ml-auto font-bold">Traceability</span>
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Personal Access Token</label>
@@ -225,73 +162,69 @@ const PlagioCodigoPage = () => {
                   onChange={(e) => setGithubToken(e.target.value)}
                   className="bg-black/40 border-white/10 h-10 rounded-xl focus:border-primary/40 transition-all text-xs"
                 />
-                <p className="text-[10px] text-white/20">Necessário para repositórios privados ou para evitar limites de taxa.</p>
+                <p className="text-[10px] text-white/20 italic">Obrigatório para repositórios privados e maior limite de taxa.</p>
               </div>
             </div>
 
-             <div className="space-y-4">
-               <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-4">
-                 <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-glow-sm">A</div>
-                     <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Código de Referência</label>
-                   </div>
-                   <div className="flex gap-2">
-                     <Input 
-                       placeholder="github.com/org/repo-a" 
-                       value={repoUrlA}
-                       onChange={(e) => setRepoUrlA(e.target.value)}
-                       className="h-9 text-xs bg-black/40 border-white/10 w-48 rounded-xl focus:border-primary/50 transition-all"
-                     />
-                     <Button 
-                       onClick={() => fetchGithubRepo("A")} 
-                       disabled={fetchingGithub === "A" || !githubToken}
-                       className="h-9 w-9 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl shadow-glow-sm"
-                       title={!githubToken ? "Insira o token acima para importar" : "Importar repositório"}
-                     >
-                       {fetchingGithub === "A" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
-                     </Button>
-                   </div>
-                 </div>
-                 {renderCodeStatus("A", codeA, repoUrlA)}
-               </div>
- 
-               <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-4">
-                 <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-glow-sm">B</div>
-                     <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Código Suspeito</label>
-                   </div>
-                   <div className="flex gap-2">
-                     <Input 
-                       placeholder="github.com/org/repo-b" 
-                       value={repoUrlB}
-                       onChange={(e) => setRepoUrlB(e.target.value)}
-                       className="h-9 text-xs bg-black/40 border-white/10 w-48 rounded-xl focus:border-primary/50 transition-all"
-                     />
-                     <Button 
-                       onClick={() => fetchGithubRepo("B")} 
-                       disabled={fetchingGithub === "B" || !githubToken}
-                       className="h-9 w-9 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl shadow-glow-sm"
-                       title={!githubToken ? "Insira o token acima para importar" : "Importar repositório"}
-                     >
-                       {fetchingGithub === "B" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
-                     </Button>
-                   </div>
-                 </div>
-                 {renderCodeStatus("B", codeB, repoUrlB)}
-               </div>
-             </div>
+            <div className="space-y-4">
+              <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-4 transition-all hover:border-white/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-glow-sm">A</div>
+                    <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Código de Referência</label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="github.com/org/repo-a" 
+                      value={repoUrlA}
+                      onChange={(e) => setRepoUrlA(e.target.value)}
+                      className="h-9 text-xs bg-black/40 border-white/10 w-48 rounded-xl focus:border-primary/50 transition-all"
+                    />
+                    <Button 
+                      onClick={() => fetchGithubRepo("A")} 
+                      disabled={fetchingGithub === "A" || !githubToken}
+                      className="h-9 w-9 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl shadow-glow-sm"
+                    >
+                      {fetchingGithub === "A" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                {renderCodeStatus("A", codeA)}
+              </div>
+
+              <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-4 transition-all hover:border-white/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-glow-sm">B</div>
+                    <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Código Suspeito</label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="github.com/org/repo-b" 
+                      value={repoUrlB}
+                      onChange={(e) => setRepoUrlB(e.target.value)}
+                      className="h-9 text-xs bg-black/40 border-white/10 w-48 rounded-xl focus:border-primary/50 transition-all"
+                    />
+                    <Button 
+                      onClick={() => fetchGithubRepo("B")} 
+                      disabled={fetchingGithub === "B" || !githubToken}
+                      className="h-9 w-9 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl shadow-glow-sm"
+                    >
+                      {fetchingGithub === "B" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                {renderCodeStatus("B", codeB)}
+              </div>
+            </div>
 
             <div className="pt-2">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Contexto adicional <span className="text-muted-foreground font-normal">(opcional)</span>
-              </label>
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2 block">Contexto Adicional</label>
               <Textarea
-                placeholder="Ex: linguagem utilizada, disciplina, informações sobre os autores..."
+                placeholder="Descreva particularidades do caso (linguagens, datas de criação, etc)..."
                 value={context}
                 onChange={(e) => setContext(e.target.value)}
-                className="min-h-[60px] bg-muted/30 border-border/60 text-foreground placeholder:text-muted-foreground resize-none"
+                className="min-h-[80px] bg-white/[0.02] border-white/10 text-white placeholder:text-white/20 resize-none rounded-2xl"
               />
             </div>
 
@@ -299,52 +232,54 @@ const PlagioCodigoPage = () => {
 
             <Button
               onClick={handleAnalyze}
-              disabled={loading}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+              disabled={loading || !codeA || !codeB}
+              className="w-full bg-primary text-black font-bold h-12 rounded-2xl hover:bg-white transition-all shadow-glow-md"
             >
               {loading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Analisando...</>
+                <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Analisando semelhanças...</>
               ) : (
-                <><Code2 className="h-4 w-4" /> Analisar Plágio</>
+                <><Code2 className="h-5 w-5 mr-2" /> Iniciar Análise de Plágio</>
               )}
             </Button>
           </div>
         </div>
 
-        <div className="glass-card rounded-xl p-5 relative">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-sm font-semibold text-foreground">Parecer Técnico</h3>
-            <div className="flex gap-1">
+        <div className="glass-card rounded-[2.5rem] p-8 relative border-white/5 bg-white/[0.02]">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-display text-sm font-bold text-white uppercase tracking-widest">Parecer Técnico Forense</h3>
+            <div className="flex gap-2">
               {result && !loading && (
                 <Button variant="ghost" size="sm" onClick={async () => {
                   setSaving(true);
                   await saveEvidence({
                     module: "plagio-codigo",
-                    title: `Plágio de Código — ${new Date().toLocaleString("pt-BR")}`,
-                    inputContent: (fileA ? `[${fileA.name}]\n` : "") + codeA.slice(0, 500) + "\n---\n" + (fileB ? `[${fileB.name}]\n` : "") + codeB.slice(0, 500),
+                    title: `Perícia de Software: ${repoUrlB.split('/').pop()}`,
+                    inputContent: `Origem A: ${repoUrlA}\nOrigem B: ${repoUrlB}\n\nCadeia de custódia via GitHub Auth Token.`,
                     resultContent: result,
                     caseId: selectedCase !== "none" ? selectedCase : undefined,
+                    metadata: { repoUrlA, repoUrlB, context }
                   });
                   setSaving(false);
                   toast({ title: "Evidência salva na cadeia de custódia!" });
-                }} disabled={saving} className="text-muted-foreground hover:text-foreground gap-1.5 h-8">
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Salvar
+                }} disabled={saving} className="text-white/60 hover:text-white hover:bg-white/10 gap-2 h-9 rounded-xl border border-white/5 transition-all">
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5 text-primary" />}
+                  Salvar Laudo
                 </Button>
               )}
               {result && (
-                <Button variant="ghost" size="sm" onClick={handleCopy} className="text-muted-foreground hover:text-foreground gap-1.5 h-8">
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copiado" : "Copiar"}
+                <Button variant="ghost" size="sm" onClick={handleCopy} className="text-white/60 hover:text-white hover:bg-white/10 gap-2 h-9 rounded-xl border border-white/5 transition-all">
+                  {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+                  Copiar
                 </Button>
               )}
             </div>
           </div>
-          <div className="min-h-[200px] max-h-[500px] overflow-auto text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+          <div className="min-h-[400px] max-h-[800px] overflow-auto text-[13px] text-white/70 leading-relaxed whitespace-pre-wrap custom-scrollbar">
             {result || (
-              <span className="text-muted-foreground italic">
-                {loading ? "Comparando códigos-fonte..." : "O parecer aparecerá aqui após a análise."}
-              </span>
+              <div className="h-full flex flex-col items-center justify-center opacity-30 py-20">
+                <Code2 className="h-12 w-12 mb-4" />
+                <p className="text-sm italic">O parecer técnico detalhado será gerado aqui após a análise comparativa dos repositórios.</p>
+              </div>
             )}
             {loading && <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />}
           </div>
