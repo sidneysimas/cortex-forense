@@ -1,3 +1,7 @@
+   filePath,
+   filePath?: string;
+     file_path: filePath,
+       file_path: filePath,
 import { supabase } from "@/integrations/supabase/client";
 import { sendNotification } from "@/lib/notifications";
 
