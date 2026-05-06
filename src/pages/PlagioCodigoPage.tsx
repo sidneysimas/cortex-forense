@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { Loader2, FileText, Copy, Check, Code2, Save, Upload, X, File, Github } from "lucide-react";
+ import { Loader2, FileText, Copy, Check, Code2, Save, Upload, X, File, Github } from "lucide-react";
+ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
