@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { Loader2, FileText, Copy, Check, Code2, Save, Upload, X, File, Github } from "lucide-react";
+ import { Loader2, FileText, Copy, Check, Code2, Save, Upload, X, File, Github } from "lucide-react";
+ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -166,55 +167,35 @@ const PlagioCodigoPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const renderCodeInput = (
-    side: "A" | "B",
-    label: string,
-    code: string,
-    setCode: (v: string) => void,
-    file: File | null,
-    fileRef: React.RefObject<HTMLInputElement>,
-    placeholder: string,
-  ) => (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-1.5">
-        {label && <label className="text-sm font-medium text-foreground">{label}</label>}
-        <input
-          ref={fileRef}
-          type="file"
-          accept={SUPPORTED_EXTENSIONS.join(",")}
-          onChange={handleFileSelect(side)}
-          className="hidden"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileRef.current?.click()}
-          className="gap-1.5 h-7 text-xs border-border text-muted-foreground hover:text-foreground ml-auto"
-        >
-          <Upload className="h-3 w-3" />
-          Enviar arquivo
-        </Button>
-      </div>
-
-      {file && (
-        <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-xs">
-          <File className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="text-foreground truncate flex-1">{file.name}</span>
-          <span className="text-muted-foreground shrink-0">{formatFileSize(file.size)}</span>
-          <button onClick={() => removeFile(side)} className="text-muted-foreground hover:text-foreground">
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      <Textarea
-        placeholder={placeholder}
-        value={code}
-        onChange={(e) => { setCode(e.target.value); if (side === "A") setFileA(null); else setFileB(null); }}
-        className="min-h-[160px] bg-muted/30 border-border/60 text-foreground placeholder:text-muted-foreground resize-none font-mono text-sm"
-      />
-    </div>
-  );
+   const renderCodeStatus = (side: "A" | "B", code: string, repoUrl: string) => {
+     if (!code) return (
+       <div className="flex flex-col items-center justify-center h-[160px] bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
+         <Github className="h-8 w-8 text-white/10 mb-2" />
+         <p className="text-xs text-white/30 uppercase tracking-widest font-bold">Aguardando Importação</p>
+       </div>
+     );
+ 
+     return (
+       <div className="relative group">
+         <div className="absolute top-3 right-3 z-10 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] uppercase font-bold">
+             Importado via GitHub
+           </Badge>
+           <Button 
+             variant="ghost" 
+             size="sm" 
+             onClick={() => side === "A" ? setCodeA("") : setCodeB("")}
+             className="h-6 w-6 p-0 rounded-full bg-black/60 hover:bg-red-500/20 text-white/40 hover:text-red-400"
+           >
+             <X className="h-3 w-3" />
+           </Button>
+         </div>
+         <div className="min-h-[160px] max-h-[160px] overflow-auto bg-white/[0.03] border border-white/10 rounded-2xl p-4 font-mono text-[11px] text-white/60 leading-relaxed custom-scrollbar">
+           {code}
+         </div>
+       </div>
+     );
+   };
 
   return (
     <div>
@@ -248,53 +229,59 @@ const PlagioCodigoPage = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-white/80">Código A — Repositório ou Texto</label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="URL do Repo A" 
-                    value={repoUrlA}
-                    onChange={(e) => setRepoUrlA(e.target.value)}
-                    className="h-8 text-xs bg-white/5 border-white/5 w-48 rounded-lg"
-                  />
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => fetchGithubRepo("A")} 
-                    disabled={fetchingGithub === "A"}
-                    className="h-8 px-3 bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all rounded-lg"
-                  >
-                    {fetchingGithub === "A" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </div>
-              {renderCodeInput("A", "", codeA, setCodeA, fileA, fileRefA, "Cole o código ou carregue via GitHub...")}
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-white/80">Código B — Repositório ou Texto</label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="URL do Repo B" 
-                    value={repoUrlB}
-                    onChange={(e) => setRepoUrlB(e.target.value)}
-                    className="h-8 text-xs bg-white/5 border-white/5 w-48 rounded-lg"
-                  />
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => fetchGithubRepo("B")} 
-                    disabled={fetchingGithub === "B"}
-                    className="h-8 px-3 bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all rounded-lg"
-                  >
-                    {fetchingGithub === "B" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </div>
-              {renderCodeInput("B", "", codeB, setCodeB, fileB, fileRefB, "Cole o código ou carregue via GitHub...")}
-            </div>
+             <div className="space-y-4">
+               <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-4">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                     <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-glow-sm">A</div>
+                     <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Código de Referência</label>
+                   </div>
+                   <div className="flex gap-2">
+                     <Input 
+                       placeholder="github.com/org/repo-a" 
+                       value={repoUrlA}
+                       onChange={(e) => setRepoUrlA(e.target.value)}
+                       className="h-9 text-xs bg-black/40 border-white/10 w-48 rounded-xl focus:border-primary/50 transition-all"
+                     />
+                     <Button 
+                       onClick={() => fetchGithubRepo("A")} 
+                       disabled={fetchingGithub === "A" || !githubToken}
+                       className="h-9 w-9 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl shadow-glow-sm"
+                       title={!githubToken ? "Insira o token acima para importar" : "Importar repositório"}
+                     >
+                       {fetchingGithub === "A" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
+                     </Button>
+                   </div>
+                 </div>
+                 {renderCodeStatus("A", codeA, repoUrlA)}
+               </div>
+ 
+               <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-4">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                     <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-glow-sm">B</div>
+                     <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Código Suspeito</label>
+                   </div>
+                   <div className="flex gap-2">
+                     <Input 
+                       placeholder="github.com/org/repo-b" 
+                       value={repoUrlB}
+                       onChange={(e) => setRepoUrlB(e.target.value)}
+                       className="h-9 text-xs bg-black/40 border-white/10 w-48 rounded-xl focus:border-primary/50 transition-all"
+                     />
+                     <Button 
+                       onClick={() => fetchGithubRepo("B")} 
+                       disabled={fetchingGithub === "B" || !githubToken}
+                       className="h-9 w-9 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl shadow-glow-sm"
+                       title={!githubToken ? "Insira o token acima para importar" : "Importar repositório"}
+                     >
+                       {fetchingGithub === "B" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
+                     </Button>
+                   </div>
+                 </div>
+                 {renderCodeStatus("B", codeB, repoUrlB)}
+               </div>
+             </div>
 
             <div className="pt-2">
               <label className="text-sm font-medium text-foreground mb-1.5 block">
