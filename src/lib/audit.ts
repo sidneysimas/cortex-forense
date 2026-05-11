@@ -20,7 +20,28 @@ function getDeviceInfo() {
      timezone: "America/Sao_Paulo",
      timestamp: now.toISOString(),
      timestampBR: brTime.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) + " (BRT)",
+     vendor: (navigator as any).vendor || "—",
+     hardwareConcurrency: navigator.hardwareConcurrency || 0,
+     deviceMemory: (navigator as any).deviceMemory || null,
+     online: navigator.onLine,
+     referrer: document.referrer || null,
+     pageUrl: window.location.href,
+     pagePath: window.location.pathname,
    };
+}
+
+let cachedIp: string | null = null;
+async function getClientIp(): Promise<string | null> {
+  if (cachedIp !== null) return cachedIp;
+  try {
+    const r = await fetch("https://api.ipify.org?format=json", { cache: "no-store" });
+    if (!r.ok) return null;
+    const j = await r.json();
+    cachedIp = j.ip || null;
+    return cachedIp;
+  } catch {
+    return null;
+  }
 }
 
  export async function logAudit(action: string, module: string, details: Record<string, unknown> = {}) {
@@ -33,17 +54,21 @@ function getDeviceInfo() {
   if (!user) return;
 
   const deviceInfo = getDeviceInfo();
+  const ipAddress = await getClientIp();
 
   await supabase.from("audit_logs").insert([{
     user_id: user.id,
     action,
     module,
+    ip_address: ipAddress,
     details: {
       ...details,
       iso27037: {
         standard: "ABNT NBR ISO/IEC 27037:2013",
         principle: "auditabilidade",
         agent: user.email,
+        agentId: user.id,
+        ip: ipAddress,
         device: deviceInfo,
       },
     },
