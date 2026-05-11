@@ -81,14 +81,20 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
    };
  
    return (
-     <div className="flex min-h-screen bg-[#020202] text-white selection:bg-primary/30">
+     <div className="flex min-h-screen bg-[#020202] text-white selection:bg-primary/30 overflow-hidden">
+       {/* Background Depth Effects */}
+       <div className="fixed inset-0 overflow-hidden pointer-events-none">
+         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
+         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/5 blur-[120px]" />
+       </div>
+ 
        {/* Noise overlay for consistent premium feel */}
        <div className="fixed inset-0 opacity-[0.02] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-50" />
  
        <motion.aside 
          animate={{ width: collapsed ? 80 : 280 }}
          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-         className="relative flex flex-col border-r border-white/5 bg-[#050505] overflow-hidden"
+         className="relative flex flex-col border-r border-white/5 bg-[#050505]/80 backdrop-blur-xl overflow-hidden z-40"
        >
          <div className="flex h-20 items-center gap-3 px-6 border-b border-white/5">
            <img src={cortexBrain} alt="Cortex" className="h-8 w-8 shrink-0 transition-transform hover:scale-110 duration-500" />
