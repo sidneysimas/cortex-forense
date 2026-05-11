@@ -34,10 +34,10 @@ const FileUploader = ({
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    // Client-side size validation (e.g., 200MB)
-    const MAX_SIZE = 200 * 1024 * 1024;
+    // Client-side size validation (1GB)
+    const MAX_SIZE = 1024 * 1024 * 1024;
     if (selectedFile.size > MAX_SIZE) {
-      toast({ title: "Arquivo muito grande", description: "O limite para análise é 200MB.", variant: "destructive" });
+      toast({ title: "Arquivo muito grande", description: "O limite para análise é 1GB.", variant: "destructive" });
       return;
     }
 
