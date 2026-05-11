@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { logAudit } from "@/lib/audit";
 
 interface AuthContextType {
   user: User | null;
@@ -19,10 +20,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (event === "SIGNED_IN") {
+        setTimeout(() => { logAudit("login", "auth", { provider: session?.user?.app_metadata?.provider || "email" }); }, 0);
+      } else if (event === "SIGNED_OUT") {
+        setTimeout(() => { logAudit("logout", "auth"); }, 0);
+      } else if (event === "TOKEN_REFRESHED") {
+        setTimeout(() => { logAudit("session_refreshed", "auth"); }, 0);
+      } else if (event === "USER_UPDATED") {
+        setTimeout(() => { logAudit("profile_updated", "auth"); }, 0);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
