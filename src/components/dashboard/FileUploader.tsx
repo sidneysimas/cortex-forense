@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
-import { Upload, File, X, Loader2, HardDrive, FileText, Globe } from "lucide-react";
+ import { useState, useRef } from "react";
+ import { Upload, File, X, Loader2, HardDrive, FileText, Globe } from "lucide-react";
+ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
