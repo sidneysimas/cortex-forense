@@ -57,13 +57,13 @@
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
            >
-             <h1 className="text-balance font-display text-5xl font-bold leading-[1.1] tracking-[-0.03em] text-white sm:text-6xl md:text-7xl lg:text-8xl max-w-5xl">
-               Transforming Data into <br />
-               <span className="relative inline-block mt-2">
-                 Unshakable{" "}
-                 <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">
-                   Evidence
-                 </span>
+              <h1 className="text-balance font-display text-5xl font-bold leading-[1.1] tracking-[-0.03em] text-white sm:text-6xl md:text-7xl lg:text-8xl max-w-6xl">
+                Transformando Dados em <br />
+                <span className="relative inline-block mt-2">
+                  Evidências{" "}
+                  <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">
+                    Inquestionáveis
+                  </span>
                  <motion.span 
                    initial={{ width: 0 }}
                    animate={{ width: "100%" }}
