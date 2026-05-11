@@ -11,6 +11,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import OrgSwitcher from "@/components/dashboard/OrgSwitcher";
+import ResponsibilityTerm from "@/components/dashboard/ResponsibilityTerm";
 import cortexBrain from "@/assets/cortex-brain.png";
 
 const navItems = [
@@ -82,6 +83,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
  
    return (
      <div className="flex min-h-screen bg-[#020202] text-white selection:bg-primary/30 overflow-hidden">
+      <ResponsibilityTerm />
        {/* Background Depth Effects */}
        <div className="fixed inset-0 overflow-hidden pointer-events-none">
          <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
