@@ -52,20 +52,38 @@ const PlagioCodigoPage = () => {
         throw new Error(`Erro ao acessar GitHub: ${resp.statusText}`);
       }
 
-      const contents = await resp.json();
-      // Improved file filtering (ignore binaries, focus on code)
-      const codeFiles = contents.filter((f: any) => 
-        f.type === "file" && /\.(py|js|ts|tsx|jsx|java|c|cpp|h|cs|go|rs|php|swift|kt|sql|html|css|sh|lua|txt)$/i.test(f.name)
-      ).slice(0, 10);
-
-      if (codeFiles.length === 0) throw new Error("Nenhum arquivo de código suportado encontrado na raiz do repositório.");
-
-      let combinedCode = "";
-      for (const file of codeFiles) {
-        const fResp = await fetch(file.download_url);
-        const text = await fResp.text();
-        combinedCode += `// ARQUIVO: ${file.name}\n${text}\n\n`;
-      }
+       const fetchFilesRecursively = async (path: string = "", depth: number = 0): Promise<any[]> => {
+         if (depth > 3) return []; // Limit depth for performance
+         const contentResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers });
+         if (!contentResp.ok) return [];
+         const items = await contentResp.json();
+         let files: any[] = [];
+         
+         for (const item of items) {
+           if (item.type === "file" && /\.(py|js|ts|tsx|jsx|java|c|cpp|h|cs|go|rs|php|swift|kt|sql|html|css|sh|lua|txt)$/i.test(item.name)) {
+             // Avoid large build artifacts or configs
+             if (!item.path.includes("node_modules") && !item.path.includes("dist") && !item.path.includes(".next")) {
+               files.push(item);
+             }
+           } else if (item.type === "dir" && depth < 2) { // Only dive into common source dirs
+             const subFiles = await fetchFilesRecursively(item.path, depth + 1);
+             files = [...files, ...subFiles];
+           }
+           if (files.length >= 15) break; // Limit total files
+         }
+         return files;
+       };
+ 
+       const codeFiles = (await fetchFilesRecursively()).slice(0, 15);
+ 
+       if (codeFiles.length === 0) throw new Error("Nenhum arquivo de código relevante encontrado.");
+ 
+       let combinedCode = "";
+       for (const file of codeFiles) {
+         const fResp = await fetch(file.download_url);
+         const text = await fResp.text();
+         combinedCode += `// ARQUIVO: ${file.path}\n${text}\n\n`;
+       }
 
       if (side === "A") setCodeA(combinedCode);
       else setCodeB(combinedCode);
