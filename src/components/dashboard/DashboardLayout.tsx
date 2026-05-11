@@ -5,7 +5,7 @@
    LayoutDashboard, LogOut, ChevronLeft, ChevronRight, Building2,
    UserCircle, Shield, Database, Camera, FileQuestion, Briefcase,
    Lock, Link2, BarChart3, History, Clock, ScanText, FileStack, Network, Monitor,
-   Search, Bell, Settings
+  Search, Bell, Settings, Inbox
  } from "lucide-react";
  import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,8 @@ import OrgSwitcher from "@/components/dashboard/OrgSwitcher";
 import ResponsibilityTerm from "@/components/dashboard/ResponsibilityTerm";
 import { logAudit } from "@/lib/audit";
 import cortexBrain from "@/assets/cortex-brain.png";
+import { supabase } from "@/integrations/supabase/client";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Painel", path: "/dashboard" },
@@ -50,7 +52,48 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const [profileName, setProfileName] = useState<string>("");
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Load profile name
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
+      .then(({ data }) => {
+        setProfileName(data?.full_name || user.email?.split("@")[0] || "Usuário");
+      });
+  }, [user]);
+
+  // Load notifications
+  const loadNotifications = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("notification_queue")
+      .select("id, subject, body, notification_type, status, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(15);
+    const list = data || [];
+    setNotifications(list);
+    setUnreadCount(list.filter((n: any) => n.status === "pending").length);
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line
+  }, [user]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    navigate(`/dashboard/evidencias?q=${encodeURIComponent(q)}`);
+  };
 
   // Audit: register every page navigation under the dashboard
   useEffect(() => {
@@ -164,34 +207,93 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
  
        <main className="flex-1 flex flex-col h-screen overflow-hidden">
          {/* Top Header */}
-         <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-black/20 backdrop-blur-md shrink-0">
-           <div className="flex items-center gap-4 bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-2 w-full max-w-md group focus-within:border-primary/50 transition-all">
-             <Search className="h-4 w-4 text-white/30 group-focus-within:text-primary transition-colors" />
-             <input 
-               type="text" 
-               placeholder="Buscar evidências, laudos ou processos..." 
-               className="bg-transparent border-none outline-none text-[13px] w-full text-white placeholder:text-white/20"
-             />
-           </div>
- 
-           <div className="flex items-center gap-3">
-             <button className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all relative">
-               <Bell className="h-5 w-5" />
-               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-black" />
-             </button>
-             <button className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all">
-               <Settings className="h-5 w-5" />
-             </button>
-             <div className="h-8 w-px bg-white/5 mx-2" />
-             <div className="flex items-center gap-3 pl-2">
-               <div className="text-right hidden sm:block">
-                 <p className="text-[13px] font-bold tracking-tight">Sidney Silva</p>
-                 <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Administrator</p>
-               </div>
-               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/50 border border-white/10 shadow-glow-sm" />
-             </div>
-           </div>
-         </header>
+          <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-black/20 backdrop-blur-md shrink-0">
+            <form onSubmit={handleSearch} className="flex items-center gap-4 bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-2 w-full max-w-md group focus-within:border-primary/50 transition-all">
+              <Search className="h-4 w-4 text-white/30 group-focus-within:text-primary transition-colors" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar evidências, laudos ou processos..."
+                className="bg-transparent border-none outline-none text-[13px] w-full text-white placeholder:text-white/20"
+              />
+            </form>
+
+            <div className="flex items-center gap-3">
+              <Popover onOpenChange={(o) => { if (o) loadNotifications(); }}>
+                <PopoverTrigger asChild>
+                  <button
+                    title="Notificações"
+                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all relative"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-primary text-black rounded-full border-2 border-black">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-96 p-0 bg-[#0a0a0a] border-white/10 text-white">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                    <h3 className="font-display text-sm font-bold">Notificações</h3>
+                    <span className="text-[10px] uppercase tracking-widest text-white/40">{notifications.length} recentes</span>
+                  </div>
+                  <div className="max-h-[400px] overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-white/40">
+                        <Inbox className="h-8 w-8 mb-2 opacity-50" />
+                        <p className="text-xs">Nenhuma notificação</p>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div key={n.id} className="px-4 py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                          <div className="flex items-start gap-2">
+                            <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${n.status === "pending" ? "bg-primary" : "bg-white/20"}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium truncate">{n.subject || "Notificação"}</p>
+                              <p className="text-[11px] text-white/50 mt-0.5 line-clamp-2">{n.body}</p>
+                              <p className="text-[10px] text-white/30 mt-1">
+                                {new Date(n.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigate("/dashboard/auditoria")}
+                    className="w-full px-4 py-2.5 text-[12px] font-medium text-primary hover:bg-white/5 border-t border-white/5 transition-colors"
+                  >
+                    Ver log de auditoria completo →
+                  </button>
+                </PopoverContent>
+              </Popover>
+
+              <button
+                onClick={() => navigate("/dashboard/email-config")}
+                title="Configurações"
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+              <div className="h-8 w-px bg-white/5 mx-2" />
+              <button
+                onClick={() => navigate("/dashboard/perfil")}
+                className="flex items-center gap-3 pl-2 hover:opacity-80 transition-opacity"
+                title="Meu perfil"
+              >
+                <div className="text-right hidden sm:block">
+                  <p className="text-[13px] font-bold tracking-tight">{profileName || "Carregando..."}</p>
+                  <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Perito</p>
+                </div>
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/50 border border-white/10 shadow-glow-sm flex items-center justify-center text-black font-bold text-sm">
+                  {(profileName || user?.email || "U").charAt(0).toUpperCase()}
+                </div>
+              </button>
+            </div>
+          </header>
  
          <div className="flex-1 overflow-y-auto no-scrollbar custom-scrollbar">
            <motion.div 
