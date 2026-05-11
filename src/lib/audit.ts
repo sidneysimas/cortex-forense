@@ -7,14 +7,20 @@ import { sendNotification } from "@/lib/notifications";
  */
 
 function getDeviceInfo() {
-  return {
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    language: navigator.language,
-    screenResolution: `${screen.width}x${screen.height}`,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    timestamp: new Date().toISOString(),
-  };
+   const now = new Date();
+   // Brasília is UTC-3
+   const brOffset = -3 * 60 * 60 * 1000;
+   const brTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + brOffset);
+   
+   return {
+     userAgent: navigator.userAgent,
+     platform: navigator.platform,
+     language: navigator.language,
+     screenResolution: `${screen.width}x${screen.height}`,
+     timezone: "America/Sao_Paulo",
+     timestamp: now.toISOString(),
+     timestampBR: brTime.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) + " (BRT)",
+   };
 }
 
  export async function logAudit(action: string, module: string, details: Record<string, unknown> = {}) {

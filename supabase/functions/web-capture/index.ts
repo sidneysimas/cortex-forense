@@ -52,7 +52,13 @@ serve(async (req) => {
       });
     }
 
-    const captureTimestamp = new Date().toISOString();
+     const now = new Date();
+     const captureTimestamp = now.toISOString();
+     
+     // Format Brasilia Time (UTC-3)
+     const brOffset = -3 * 60 * 60 * 1000;
+     const brTime = new Date(now.getTime() + brOffset); // Simple offset for function logs
+     const brTimestamp = brTime.toISOString().replace('Z', '-03:00');
     const hostname = parsedUrl.hostname;
 
     // Parallel: DNS + WHOIS + Page fetch + Screenshot
@@ -165,7 +171,8 @@ Seja conciso e técnico. Responda em português do Brasil.`,
 
     const result = {
       captureId,
-      timestamp: captureTimestamp,
+       timestamp: captureTimestamp,
+       timestampBR: brTimestamp,
       originalUrl: url,
       finalUrl,
       statusCode,
