@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import OrgSwitcher from "@/components/dashboard/OrgSwitcher";
 import ResponsibilityTerm from "@/components/dashboard/ResponsibilityTerm";
+import { logAudit } from "@/lib/audit";
 import cortexBrain from "@/assets/cortex-brain.png";
 
 const navItems = [
@@ -50,6 +51,17 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+
+  // Audit: register every page navigation under the dashboard
+  useEffect(() => {
+    const all = [...navItems, ...adminItems];
+    const match = all.find((i) => i.path === location.pathname);
+    const label = match?.label || location.pathname;
+    logAudit("page_view", match ? label.toLowerCase().replace(/\s+/g, "_") : "navigation", {
+      path: location.pathname,
+      label,
+    });
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await signOut();
