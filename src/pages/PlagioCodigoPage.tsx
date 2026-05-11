@@ -162,9 +162,12 @@ const PlagioCodigoPage = () => {
         Compare repositórios GitHub de forma segura para identificar similaridades e plágio.
       </p>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-4">
-          <div className="glass-card rounded-xl p-5 space-y-6">
+       <div className="grid gap-8 lg:grid-cols-2">
+         <div className="space-y-6">
+           <div className="glass-card rounded-[2.5rem] p-8 space-y-8 relative overflow-hidden group">
+             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+               <Code2 className="h-24 w-24" />
+             </div>
             <div className="space-y-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 shadow-premium-sm">
               <div className="flex items-center gap-2 mb-1">
                 <Github className="h-5 w-5 text-primary" />
