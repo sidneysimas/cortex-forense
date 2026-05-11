@@ -54,13 +54,14 @@ export default {
          md: "calc(var(--radius) - 2px)",
          sm: "calc(var(--radius) - 4px)",
        },
-       boxShadow: {
-         "premium-sm": "0 2px 8px -2px rgba(0, 0, 0, 0.5)",
-         "premium-md": "0 4px 16px -4px rgba(0, 0, 0, 0.6)",
-         "premium-lg": "0 12px 32px -8px rgba(0, 0, 0, 0.7)",
-         "glow-sm": "0 0 15px -5px rgba(212, 175, 55, 0.3)",
-         "glow-md": "0 0 25px -5px rgba(212, 175, 55, 0.4)",
-       },
+        boxShadow: {
+          "premium-sm": "0 2px 8px -2px rgba(0, 0, 0, 0.5)",
+          "premium-md": "0 4px 16px -4px rgba(0, 0, 0, 0.6)",
+          "premium-lg": "0 12px 32px -8px rgba(0, 0, 0, 0.7)",
+          "glow-sm": "0 0 15px -5px rgba(212, 175, 55, 0.3)",
+          "glow-md": "0 0 25px -5px rgba(212, 175, 55, 0.4)",
+          "inner-glow": "inset 0 0 20px rgba(212, 175, 55, 0.05)",
+        },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },
         "accordion-up": { from: { height: "var(--radix-accordion-content-height)" }, to: { height: "0" } },

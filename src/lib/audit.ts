@@ -17,7 +17,12 @@ function getDeviceInfo() {
   };
 }
 
-export async function logAudit(action: string, module: string, details: Record<string, unknown> = {}) {
+ export async function logAudit(action: string, module: string, details: Record<string, unknown> = {}) {
+   // Dispatch custom event for real-time UI updates
+   window.dispatchEvent(new CustomEvent('audit_log_realtime', { 
+     detail: { action, module, timestamp: new Date().toISOString() } 
+   }));
+ 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
