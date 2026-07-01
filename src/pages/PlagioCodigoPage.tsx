@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
+import JSZip from "jszip";
 import {
   Loader2, Copy, Check, Code2, Save, X,
-  ShieldAlert, ShieldCheck, ShieldQuestion, FileCode2, AlertCircle, KeyRound
+  ShieldAlert, ShieldCheck, ShieldQuestion, FileCode2, AlertCircle,
+  KeyRound, Upload, Link2, FolderOpen
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,40 +61,75 @@ function SimilarityMeter({ value }: { value: number | null }) {
   );
 }
 
-// ── GitLab icon (SVG inline — lucide não tem) ─────────────────────────────────
-function GitLabIcon({ className }: { className?: string }) {
+// ── Icons (inline SVG para GitHub/GitLab) ────────────────────────────────────
+const GithubIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
+  </svg>
+);
+
+const GitLabIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+  </svg>
+);
+
+// ── Tech stack detection ──────────────────────────────────────────────────────
+const LANG_MAP: Record<string, { label: string; color: string }> = {
+  py:    { label: "Python",      color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+  js:    { label: "JavaScript",  color: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30" },
+  ts:    { label: "TypeScript",  color: "bg-blue-400/20 text-blue-200 border-blue-400/30" },
+  tsx:   { label: "TSX",         color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
+  jsx:   { label: "JSX",         color: "bg-yellow-400/20 text-yellow-200 border-yellow-400/30" },
+  java:  { label: "Java",        color: "bg-red-500/20 text-red-300 border-red-500/30" },
+  cs:    { label: "C#",          color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
+  go:    { label: "Go",          color: "bg-teal-500/20 text-teal-300 border-teal-500/30" },
+  rs:    { label: "Rust",        color: "bg-orange-500/20 text-orange-300 border-orange-500/30" },
+  cpp:   { label: "C++",         color: "bg-pink-500/20 text-pink-300 border-pink-500/30" },
+  c:     { label: "C",           color: "bg-gray-400/20 text-gray-300 border-gray-400/30" },
+  php:   { label: "PHP",         color: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
+  swift: { label: "Swift",       color: "bg-orange-400/20 text-orange-200 border-orange-400/30" },
+  kt:    { label: "Kotlin",      color: "bg-purple-400/20 text-purple-200 border-purple-400/30" },
+  rb:    { label: "Ruby",        color: "bg-red-400/20 text-red-200 border-red-400/30" },
+  sh:    { label: "Shell",       color: "bg-green-500/20 text-green-300 border-green-500/30" },
+  sql:   { label: "SQL",         color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" },
+  dart:  { label: "Dart",        color: "bg-cyan-400/20 text-cyan-200 border-cyan-400/30" },
+  scala: { label: "Scala",       color: "bg-red-300/20 text-red-200 border-red-300/30" },
+  r:     { label: "R",           color: "bg-blue-300/20 text-blue-100 border-blue-300/30" },
+  lua:   { label: "Lua",         color: "bg-indigo-400/20 text-indigo-200 border-indigo-400/30" },
+};
+
+function detectTechStack(code: string): string[] {
+  const exts = new Set<string>();
+  const matches = code.matchAll(/\/\/ ── ARQUIVO: .+\.(\w+) ──/g);
+  for (const m of matches) exts.add(m[1].toLowerCase());
+  return [...exts].filter(e => LANG_MAP[e]);
+}
+
+function TechBadges({ code }: { code: string }) {
+  const langs = detectTechStack(code);
+  if (!langs.length) return null;
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
-    </svg>
+    <div className="flex flex-wrap gap-1 mt-2">
+      {langs.map(ext => {
+        const info = LANG_MAP[ext];
+        return (
+          <span key={ext} className={`text-[10px] px-2 py-0.5 rounded-full border font-mono font-bold ${info.color}`}>
+            {info.label}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
 // ── Provider detection ────────────────────────────────────────────────────────
 type Provider = "github" | "gitlab" | null;
-
 function detectProvider(url: string): Provider {
   const u = url.toLowerCase();
   if (u.includes("github.com")) return "github";
   if (u.includes("gitlab")) return "gitlab";
   return null;
-}
-
-function ProviderBadge({ url }: { url: string }) {
-  const p = detectProvider(url);
-  if (!p) return null;
-  if (p === "github") return (
-    <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-white/40 flex items-center gap-1">
-      <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
-      GitHub
-    </span>
-  );
-  return (
-    <span className="text-[10px] px-2 py-0.5 rounded-full border border-orange-500/20 bg-orange-500/10 text-orange-400 flex items-center gap-1">
-      <GitLabIcon className="h-3 w-3" />
-      GitLab
-    </span>
-  );
 }
 
 // ── Repo fetchers ─────────────────────────────────────────────────────────────
@@ -104,7 +141,6 @@ const MAX_DEPTH = 3;
 async function fetchGitHubRepo(url: string, token?: string): Promise<string> {
   const match = url.trim().replace(/\/$/, "").match(/github\.com\/([^/]+)\/([^/#?]+)/);
   if (!match) throw new Error("URL GitHub inválida. Use: github.com/usuario/repositorio");
-
   const [, owner, repoRaw] = match;
   const repo = repoRaw.replace(/\.git$/, "");
   const headers: Record<string, string> = { Accept: "application/vnd.github.v3+json" };
@@ -128,7 +164,6 @@ async function fetchGitHubRepo(url: string, token?: string): Promise<string> {
 
   const files = (await collect()).slice(0, MAX_FILES);
   if (!files.length) throw new Error("Nenhum arquivo de código encontrado no repositório GitHub.");
-
   let out = `// ═══ REPOSITÓRIO (GitHub): ${owner}/${repo} — ${files.length} arquivos ═══\n\n`;
   for (const f of files) {
     const txt = await fetch(f.download_url).then(r => r.text()).catch(() => "// [erro ao ler arquivo]");
@@ -139,24 +174,19 @@ async function fetchGitHubRepo(url: string, token?: string): Promise<string> {
 
 async function fetchGitLabRepo(url: string, token?: string): Promise<string> {
   const clean = url.trim().replace(/\/$/, "").replace(/^https?:\/\//, "");
-  // Supports: gitlab.com/owner/repo  OR  gitlab.com/group/sub/repo
   const slashIdx = clean.indexOf("/");
   if (slashIdx === -1) throw new Error("URL GitLab inválida. Use: gitlab.com/usuario/repositorio");
-
-  const host      = clean.slice(0, slashIdx);
-  const pathRaw   = clean.slice(slashIdx + 1).replace(/\.git$/, "");
-  const baseUrl   = `https://${host}/api/v4/projects/${encodeURIComponent(pathRaw)}`;
+  const host    = clean.slice(0, slashIdx);
+  const pathRaw = clean.slice(slashIdx + 1).replace(/\.git$/, "");
+  const baseUrl = `https://${host}/api/v4/projects/${encodeURIComponent(pathRaw)}`;
   const headers: Record<string, string> = {};
   if (token) headers["PRIVATE-TOKEN"] = token;
 
   const collect = async (path = "", depth = 0): Promise<string[]> => {
     if (depth > MAX_DEPTH) return [];
-    const r = await fetch(
-      `${baseUrl}/repository/tree?path=${encodeURIComponent(path)}&per_page=100&ref=HEAD`,
-      { headers }
-    );
+    const r = await fetch(`${baseUrl}/repository/tree?path=${encodeURIComponent(path)}&per_page=100&ref=HEAD`, { headers });
     if (!r.ok) {
-      if (r.status === 404) throw new Error("Repositório GitLab não encontrado. Verifique a URL e o token para repos privados.");
+      if (r.status === 404) throw new Error("Repositório GitLab não encontrado. Verifique a URL e o token.");
       return [];
     }
     const items: any[] = await r.json();
@@ -173,11 +203,10 @@ async function fetchGitLabRepo(url: string, token?: string): Promise<string> {
 
   const filePaths = (await collect()).slice(0, MAX_FILES);
   if (!filePaths.length) throw new Error("Nenhum arquivo de código encontrado no repositório GitLab.");
-
   let out = `// ═══ REPOSITÓRIO (GitLab): ${pathRaw} — ${filePaths.length} arquivos ═══\n\n`;
   for (const fp of filePaths) {
-    const rawUrl = `${baseUrl}/repository/files/${encodeURIComponent(fp)}/raw?ref=HEAD`;
-    const txt = await fetch(rawUrl, { headers }).then(r => r.text()).catch(() => "// [erro ao ler arquivo]");
+    const txt = await fetch(`${baseUrl}/repository/files/${encodeURIComponent(fp)}/raw?ref=HEAD`, { headers })
+      .then(r => r.text()).catch(() => "// [erro ao ler arquivo]");
     out += `// ── ARQUIVO: ${fp} ──\n${txt.slice(0, 8000)}\n\n`;
   }
   return out;
@@ -190,22 +219,100 @@ async function fetchRepo(url: string, token?: string): Promise<string> {
   throw new Error("URL não reconhecida. Use github.com/... ou gitlab.com/...");
 }
 
+// ── File / ZIP reader ─────────────────────────────────────────────────────────
+async function readFilesAsCode(fileList: FileList | File[]): Promise<{ code: string; count: number }> {
+  const files = Array.from(fileList);
+  let combined = "";
+  let count = 0;
+  const label = files.length === 1 && files[0].name ? files[0].name : `${files.length} arquivo(s)`;
+
+  for (const file of files) {
+    // ZIP: extrair com JSZip
+    if (file.name.endsWith(".zip")) {
+      const zip = await JSZip.loadAsync(file);
+      const entries = Object.entries(zip.files)
+        .filter(([name, entry]) => !entry.dir && CODE_EXTENSIONS.test(name) && !IGNORE_PATHS.test(name))
+        .slice(0, MAX_FILES);
+
+      if (!combined) combined = `// ═══ UPLOAD: ${label} — ${entries.length} arquivos ═══\n\n`;
+      for (const [name, entry] of entries) {
+        const txt = await entry.async("string").catch(() => "// [erro ao ler arquivo]");
+        combined += `// ── ARQUIVO: ${name} ──\n${txt.slice(0, 8000)}\n\n`;
+        count++;
+      }
+    } else if (CODE_EXTENSIONS.test(file.name) && !IGNORE_PATHS.test(file.name)) {
+      // Arquivo de código individual
+      const txt = await file.text().catch(() => "// [erro ao ler arquivo]");
+      if (!combined) combined = `// ═══ UPLOAD: ${label} — arquivos ═══\n\n`;
+      combined += `// ── ARQUIVO: ${file.name} ──\n${txt.slice(0, 8000)}\n\n`;
+      count++;
+    }
+
+    if (count >= MAX_FILES) break;
+  }
+
+  if (!count) throw new Error("Nenhum arquivo de código reconhecido. Envie .py, .js, .ts, .java, etc. ou um .zip.");
+
+  // Atualizar header com contagem real
+  combined = combined.replace(/— arquivos ═══/, `— ${count} arquivo(s) ═══`);
+  return { code: combined, count };
+}
+
+// ── Drop Zone component ───────────────────────────────────────────────────────
+function DropZone({ onFiles, loading }: { onFiles: (fl: FileList) => void; loading: boolean }) {
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files);
+  }, [onFiles]);
+
+  return (
+    <div
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+      onClick={() => inputRef.current?.click()}
+      className={`flex flex-col items-center justify-center h-[140px] border-2 border-dashed rounded-2xl cursor-pointer transition-all
+        ${dragging ? "border-primary bg-primary/10" : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]"}`}
+    >
+      <input ref={inputRef} type="file" multiple className="hidden"
+        accept=".py,.js,.ts,.tsx,.jsx,.java,.c,.cpp,.h,.cs,.go,.rs,.php,.swift,.kt,.sql,.sh,.lua,.rb,.r,.scala,.dart,.zip"
+        onChange={e => e.target.files && onFiles(e.target.files)} />
+      {loading
+        ? <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+        : <Upload className="h-6 w-6 text-white/20 mb-2" />
+      }
+      <p className="text-xs text-white/30 text-center px-4">
+        {loading ? "Lendo arquivos..." : <>Arraste arquivos de código ou <span className="text-primary underline">clique para selecionar</span></>}
+      </p>
+      <p className="text-[10px] text-white/15 mt-1">.py .js .ts .java .go .cs ... ou .zip</p>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
+type ImportMode = "url" | "upload";
+
 const PlagioCodigoPage = () => {
-  const [codeA, setCodeA]           = useState("");
-  const [codeB, setCodeB]           = useState("");
-  const [context, setContext]       = useState("");
-  const [result, setResult]         = useState("");
-  const [loading, setLoading]       = useState(false);
-  const [copied, setCopied]         = useState(false);
-  const [saving, setSaving]         = useState(false);
+  const [codeA, setCodeA]         = useState("");
+  const [codeB, setCodeB]         = useState("");
+  const [context, setContext]     = useState("");
+  const [result, setResult]       = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [copied, setCopied]       = useState(false);
+  const [saving, setSaving]       = useState(false);
   const [selectedCase, setSelectedCase] = useState("none");
   const [accessToken, setAccessToken]   = useState("");
-  const [repoUrlA, setRepoUrlA]     = useState("");
-  const [repoUrlB, setRepoUrlB]     = useState("");
-  const [fetching, setFetching]     = useState<"A" | "B" | null>(null);
-  const [filesA, setFilesA]         = useState(0);
-  const [filesB, setFilesB]         = useState(0);
+  const [repoUrlA, setRepoUrlA]   = useState("");
+  const [repoUrlB, setRepoUrlB]   = useState("");
+  const [fetching, setFetching]   = useState<"A" | "B" | null>(null);
+  const [filesA, setFilesA]       = useState(0);
+  const [filesB, setFilesB]       = useState(0);
+  const [modeA, setModeA]         = useState<ImportMode>("url");
+  const [modeB, setModeB]         = useState<ImportMode>("url");
 
   const { verdict, similarity } = parseVerdict(result);
 
@@ -221,9 +328,24 @@ const PlagioCodigoPage = () => {
       toast({ title: `Repositório ${side} carregado`, description: `${count} arquivos extraídos.` });
     } catch (e: any) {
       toast({ title: "Erro ao importar repositório", description: e.message, variant: "destructive" });
-    } finally {
-      setFetching(null);
-    }
+    } finally { setFetching(null); }
+  };
+
+  const doUpload = async (side: "A" | "B", fl: FileList) => {
+    setFetching(side);
+    try {
+      const { code, count } = await readFilesAsCode(fl);
+      if (side === "A") { setCodeA(code); setFilesA(count); }
+      else              { setCodeB(code); setFilesB(count); }
+      toast({ title: `Arquivos ${side} carregados`, description: `${count} arquivo(s) lido(s).` });
+    } catch (e: any) {
+      toast({ title: "Erro no upload", description: e.message, variant: "destructive" });
+    } finally { setFetching(null); }
+  };
+
+  const clearSide = (side: "A" | "B") => {
+    if (side === "A") { setCodeA(""); setFilesA(0); }
+    else              { setCodeB(""); setFilesB(0); }
   };
 
   const handleAnalyze = async () => {
@@ -234,23 +356,29 @@ const PlagioCodigoPage = () => {
     setLoading(true);
     setResult("");
 
-    const prompt = `[PERÍCIA DE PLÁGIO DE SOFTWARE — ANÁLISE FORENSE]
+    const techA = detectTechStack(codeA).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
+    const techB = detectTechStack(codeB).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
 
-REPOSITÓRIO A (REFERÊNCIA): ${repoUrlA || "Código A"}
-REPOSITÓRIO B (SUSPEITO): ${repoUrlB || "Código B"}
+    const prompt = `[PERÍCIA DE PLÁGIO DE SOFTWARE — ANÁLISE FORENSE JUDICIAL]
+
+REPOSITÓRIO A (REFERÊNCIA): ${repoUrlA || "Upload local A"}
+REPOSITÓRIO B (SUSPEITO):   ${repoUrlB || "Upload local B"}
+TECNOLOGIAS DETECTADAS A: ${techA}
+TECNOLOGIAS DETECTADAS B: ${techB}
 CONTEXTO: ${context || "Não informado"}
 
 INSTRUÇÕES OBRIGATÓRIAS:
-1. A primeira linha do parecer DEVE ser: VEREDITO: [CULPADO | SUSPEITO | NÃO CULPADO]
-2. A segunda linha DEVE ser: SIMILARIDADE: [0-100]%
-3. Em seguida, produza o parecer técnico completo.
-4. Compare lógica algorítmica, não apenas texto — detecte plágio cross-language (ex: Python traduzido para JS).
+1. PRIMEIRA LINHA obrigatória: VEREDITO: [CULPADO | SUSPEITO | NÃO CULPADO]
+2. SEGUNDA LINHA obrigatória: SIMILARIDADE: [0-100]%
+3. Produza o parecer técnico completo nas seções abaixo.
+4. Compare LÓGICA ALGORÍTMICA — detecte plágio cross-language (ex: Python traduzido para JS, Java reescrito em C#).
 5. Identifique ofuscação deliberada (renomeação de variáveis, inversão de condições, reordenação de blocos).
+6. Analise TECNOLOGIAS em uso: frameworks, bibliotecas, padrões arquiteturais — compare entre A e B.
 
-CÓDIGO A (${filesA} arquivos):
+CÓDIGO A (${filesA} arquivos — tecnologias: ${techA}):
 ${codeA.slice(0, 18000)}
 
-CÓDIGO B (${filesB} arquivos):
+CÓDIGO B (${filesB} arquivos — tecnologias: ${techB}):
 ${codeB.slice(0, 18000)}`;
 
     await streamForensicAnalysis({
@@ -262,32 +390,84 @@ ${codeB.slice(0, 18000)}`;
     });
   };
 
-  const repoPreview = (side: "A" | "B", code: string, count: number) => {
-    const url = side === "A" ? repoUrlA : repoUrlB;
-    if (!code) return (
-      <div className="flex flex-col items-center justify-center h-[140px] bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
-        {detectProvider(url) === "gitlab"
-          ? <GitLabIcon className="h-7 w-7 text-white/10 mb-2" />
-          : <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 text-white/10 mb-2"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
-        }
-        <p className="text-xs text-white/30 uppercase tracking-widest font-bold">Aguardando Importação</p>
-      </div>
-    );
+  const renderPanel = (side: "A" | "B") => {
+    const isA    = side === "A";
+    const code   = isA ? codeA : codeB;
+    const count  = isA ? filesA : filesB;
+    const url    = isA ? repoUrlA : repoUrlB;
+    const mode   = isA ? modeA : modeB;
+    const setUrl = isA ? setRepoUrlA : setRepoUrlB;
+    const setMode = isA ? setModeA : setModeB;
+    const prov   = detectProvider(url);
+
     return (
-      <div className="relative group">
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] font-bold">
-            <FileCode2 className="h-3 w-3 mr-1" />{count} arquivos
-          </Badge>
-          <Button variant="ghost" size="sm"
-            onClick={() => { if(side==="A"){setCodeA("");setFilesA(0);}else{setCodeB("");setFilesB(0);} }}
-            className="h-6 w-6 p-0 rounded-full bg-black/60 hover:bg-red-500/20 text-white/40 hover:text-red-400">
-            <X className="h-3 w-3" />
-          </Button>
+      <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-3 hover:border-white/20 transition-all">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="h-7 w-7 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{side}</div>
+          <label className="text-xs font-bold text-white/60 uppercase tracking-widest flex-1">
+            {isA ? "Código de Referência" : "Código Suspeito"}
+          </label>
+          {/* Mode toggle */}
+          <div className="flex rounded-xl border border-white/10 overflow-hidden">
+            <button
+              onClick={() => setMode("url")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold transition-all
+                ${mode === "url" ? "bg-primary text-black" : "text-white/30 hover:text-white/60"}`}>
+              <Link2 className="h-3 w-3" /> URL
+            </button>
+            <button
+              onClick={() => setMode("upload")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold transition-all
+                ${mode === "upload" ? "bg-primary text-black" : "text-white/30 hover:text-white/60"}`}>
+              <Upload className="h-3 w-3" /> Upload
+            </button>
+          </div>
         </div>
-        <div className="h-[140px] overflow-auto bg-white/[0.03] border border-white/10 rounded-2xl p-3 font-mono text-[10px] text-white/50 leading-relaxed custom-scrollbar">
-          {code.slice(0, 2000)}
-        </div>
+
+        {/* URL mode */}
+        {mode === "url" && !code && (
+          <div className="flex gap-2">
+            <Input
+              placeholder="github.com/org/repo  ou  gitlab.com/org/repo"
+              value={url} onChange={e => setUrl(e.target.value)}
+              className="h-8 text-xs bg-black/40 border-white/10 rounded-xl flex-1" />
+            <Button onClick={() => doFetch(side)} disabled={fetching === side}
+              className="h-8 w-8 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl flex-shrink-0">
+              {fetching === side
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : prov === "gitlab" ? <GitLabIcon className="h-4 w-4" /> : <GithubIcon className="h-4 w-4" />
+              }
+            </Button>
+          </div>
+        )}
+
+        {/* Upload mode */}
+        {mode === "upload" && !code && (
+          <DropZone onFiles={fl => doUpload(side, fl)} loading={fetching === side} />
+        )}
+
+        {/* Preview (shared) */}
+        {code && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] font-bold">
+                <FileCode2 className="h-3 w-3 mr-1" />{count} arquivos
+              </Badge>
+              {url && prov === "github" && <Badge variant="outline" className="text-[10px] text-white/30 border-white/10 gap-1"><GithubIcon className="h-3 w-3" />GitHub</Badge>}
+              {url && prov === "gitlab" && <Badge variant="outline" className="text-[10px] text-orange-400 border-orange-500/20 bg-orange-500/10 gap-1"><GitLabIcon className="h-3 w-3" />GitLab</Badge>}
+              {!url && <Badge variant="outline" className="text-[10px] text-white/30 border-white/10 gap-1"><FolderOpen className="h-3 w-3" />Upload local</Badge>}
+              <Button variant="ghost" size="sm" onClick={() => clearSide(side)}
+                className="ml-auto h-6 w-6 p-0 rounded-full bg-black/60 hover:bg-red-500/20 text-white/40 hover:text-red-400">
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+            <TechBadges code={code} />
+            <div className="h-[120px] overflow-auto bg-white/[0.03] border border-white/10 rounded-2xl p-3 font-mono text-[10px] text-white/50 leading-relaxed custom-scrollbar">
+              {code.slice(0, 2000)}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -296,7 +476,7 @@ ${codeB.slice(0, 18000)}`;
     <div>
       <h1 className="font-display text-2xl font-bold mb-1">Análise de Plágio de Código-Fonte</h1>
       <p className="text-muted-foreground mb-6 text-sm">
-        Perícia forense cross-language entre repositórios GitHub e GitLab — detecta plágio mesmo após tradução ou ofuscação de linguagem.
+        Perícia forense cross-language — GitHub, GitLab ou upload de arquivos. Detecta plágio mesmo após tradução ou ofuscação de linguagem.
       </p>
 
       <div className="grid gap-8 lg:grid-cols-2">
@@ -307,72 +487,40 @@ ${codeB.slice(0, 18000)}`;
               <Code2 className="h-24 w-24" />
             </div>
 
-            {/* Token de acesso */}
-            <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+            {/* Token */}
+            <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-bold text-white">Token de Acesso</h3>
-                <Badge variant="outline" className="ml-auto text-[9px] text-white/30 border-white/10">Opcional para repos públicos</Badge>
+                <Badge variant="outline" className="ml-auto text-[9px] text-white/30 border-white/10">Opcional — repos públicos não precisam</Badge>
               </div>
               <Input type="password"
-                placeholder="GitHub: ghp_xxx... · GitLab: glpat-xxx..."
+                placeholder="GitHub: ghp_xxx...  ·  GitLab: glpat-xxx..."
                 value={accessToken} onChange={e => setAccessToken(e.target.value)}
                 className="bg-black/40 border-white/10 h-9 rounded-xl text-xs" />
-              <p className="text-[10px] text-white/20">
-                GitHub: Settings → Developer settings → Personal access tokens<br />
-                GitLab: User Settings → Access Tokens (scope: <code>read_repository</code>)
-              </p>
             </div>
 
-            {/* Repos A e B */}
-            {(["A", "B"] as const).map(side => (
-              <div key={side} className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-3 hover:border-white/20 transition-all">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-7 w-7 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-glow-sm">{side}</div>
-                    <label className="text-xs font-bold text-white/60 uppercase tracking-widest">
-                      {side === "A" ? "Código de Referência" : "Código Suspeito"}
-                    </label>
-                    <ProviderBadge url={side === "A" ? repoUrlA : repoUrlB} />
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={`github.com/org/repo ou gitlab.com/org/repo`}
-                      value={side === "A" ? repoUrlA : repoUrlB}
-                      onChange={e => side === "A" ? setRepoUrlA(e.target.value) : setRepoUrlB(e.target.value)}
-                      className="h-8 text-xs bg-black/40 border-white/10 w-52 rounded-xl" />
-                    <Button onClick={() => doFetch(side)} disabled={fetching === side}
-                      className="h-8 w-8 p-0 bg-primary text-black hover:bg-white transition-all rounded-xl flex-shrink-0">
-                      {fetching === side
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : detectProvider(side === "A" ? repoUrlA : repoUrlB) === "gitlab"
-                          ? <GitLabIcon className="h-4 w-4" />
-                          : <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
-                      }
-                    </Button>
-                  </div>
-                </div>
-                {repoPreview(side, side === "A" ? codeA : codeB, side === "A" ? filesA : filesB)}
-              </div>
-            ))}
+            {/* Painéis A e B */}
+            {renderPanel("A")}
+            {renderPanel("B")}
 
-            {/* Context */}
+            {/* Contexto */}
             <div>
               <label className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2 block">Contexto Adicional</label>
-              <Textarea placeholder="Descreva particularidades do caso (linguagens envolvidas, datas, suspeitos, etc)..."
+              <Textarea
+                placeholder="Descreva particularidades do caso (linguagens envolvidas, datas, suspeitos, etc)..."
                 value={context} onChange={e => setContext(e.target.value)}
                 className="min-h-[70px] bg-white/[0.02] border-white/10 text-white placeholder:text-white/20 resize-none rounded-2xl text-sm" />
             </div>
 
             <CaseSelector value={selectedCase} onChange={setSelectedCase} />
 
-            {/* Limits info */}
             <div className="flex items-start gap-2 text-[11px] text-white/30 bg-white/[0.02] rounded-xl p-3">
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
               <span>
-                Análise profunda: até {MAX_FILES} arquivos por repositório, profundidade {MAX_DEPTH} níveis.
+                Análise profunda: até {MAX_FILES} arquivos por fonte, profundidade {MAX_DEPTH} níveis.
+                Suporta <strong className="text-white/40">GitHub</strong>, <strong className="text-orange-400/60">GitLab</strong> (cloud e self-hosted) e <strong className="text-white/40">upload local</strong> (.zip ou arquivos individuais).
                 Detecta plágio cross-language (Python→JS, Java→C#, etc.).
-                Suporta <strong className="text-white/40">GitHub</strong> e <strong className="text-orange-400/60">GitLab</strong> (cloud e self-hosted).
               </span>
             </div>
 
@@ -395,8 +543,8 @@ ${codeB.slice(0, 18000)}`;
                   setSaving(true);
                   await saveEvidence({
                     module: "plagio-codigo",
-                    title: `Perícia de Software: ${(repoUrlB || "Repo B").split("/").pop()}`,
-                    inputContent: `Origem A: ${repoUrlA}\nOrigem B: ${repoUrlB}\nVeredito: ${verdict || "—"}\nSimilaridade: ${similarity ?? "—"}%`,
+                    title: `Perícia de Software: ${(repoUrlB || "Upload B").split("/").pop()}`,
+                    inputContent: `Origem A: ${repoUrlA || "Upload"}\nOrigem B: ${repoUrlB || "Upload"}\nVeredito: ${verdict || "—"}\nSimilaridade: ${similarity ?? "—"}%`,
                     resultContent: result,
                     caseId: selectedCase !== "none" ? selectedCase : undefined,
                     metadata: { repoUrlA, repoUrlB, context, verdict, similarity },
@@ -418,7 +566,7 @@ ${codeB.slice(0, 18000)}`;
             </div>
           </div>
 
-          {/* Verdict + Similarity */}
+          {/* Veredito + similaridade */}
           {(verdict || similarity !== null) && (
             <div className="space-y-3 mb-5 p-4 rounded-2xl bg-white/[0.03] border border-white/10">
               <VerdictBadge verdict={verdict} />
