@@ -3,7 +3,8 @@ import JSZip from "jszip";
 import {
   Loader2, Copy, Check, Code2, Save, X,
   ShieldAlert, ShieldCheck, ShieldQuestion, FileCode2, AlertCircle,
-  KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare, Lock
+  KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare, Lock,
+  FileText, Download
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { streamForensicAnalysis } from "@/lib/forensic-api";
 import { toast } from "@/hooks/use-toast";
 import { saveEvidence } from "@/lib/audit";
+import { supabase } from "@/integrations/supabase/client";
 import CaseSelector from "@/components/dashboard/CaseSelector";
 import {
   analyzeStructural,
