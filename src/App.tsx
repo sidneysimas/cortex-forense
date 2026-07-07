@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
+import { ThemeProvider } from "@/hooks/useTheme";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -49,6 +50,7 @@ const Dashboard = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
     <AuthProvider>
       <OrganizationProvider>
       <TooltipProvider>
@@ -92,6 +94,7 @@ const App = () => (
       </TooltipProvider>
       </OrganizationProvider>
     </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
