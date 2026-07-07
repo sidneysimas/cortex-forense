@@ -725,6 +725,22 @@ ${codeB.slice(0, 18000)}`;
                 Tokenização normaliza identificadores e literais — renomear variáveis <strong className="text-white/50">não</strong> afeta este número.
                 Reproduzível: mesmo input, mesmo resultado.
               </p>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                <div className="text-[10px]">
+                  <p className="text-white/30 uppercase tracking-widest">Perfil / minMatch</p>
+                  <p className="text-white/60 font-mono">
+                    {structural.languageProfile} · {structural.minMatchUsed} tokens
+                  </p>
+                </div>
+                <div className="text-[10px]">
+                  <p className="text-white/30 uppercase tracking-widest flex items-center gap-1">
+                    <Lock className="h-2.5 w-2.5" /> SHA-256 evidência
+                  </p>
+                  <p className="text-white/60 font-mono truncate" title={evidenceHash ?? ""}>
+                    {evidenceHash ? evidenceHash.slice(0, 24) + "…" : "—"}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
