@@ -1,0 +1,356 @@
+// Structural plagiarism detector — JPlag-style pipeline (browser TS port).
+//
+// Pipeline (per Manifesto Metodológico CortexForense):
+//   1. Tokenize source code, dropping comments/whitespace.
+//   2. Normalize identifiers/literals to generic tokens (ID / NUM / STR),
+//      preserving keywords and operators. Renaming variables no longer
+//      hides the structural fingerprint.
+//   3. Run Greedy String Tiling (Wise, 1996) — the same algorithm behind
+//      JPlag — to find maximal common token sequences.
+//   4. Similarity = 2 * coveredTokens / (|A|+|B|) — JPlag's formula.
+//
+// This is NOT a re-implementation of the full JPlag scanner set; it's an
+// in-browser structural comparator based on the same principles, sufficient
+// to defeat rename/translation obfuscation and to give the LLM deterministic
+// evidence to cite in the parecer.
+
+export interface Token {
+  value: string;   // normalized value: keyword, punctuation, or ID/NUM/STR
+  line: number;
+  raw: string;     // original spelling (for evidence snippets)
+}
+
+export interface FileTokens {
+  file: string;
+  tokens: Token[];
+  rawLines: string[];
+}
+
+export interface StructuralMatch {
+  fileA: string;
+  fileB: string;
+  length: number;         // token count of the matched block
+  linesA: [number, number];
+  linesB: [number, number];
+  snippetA: string;
+  snippetB: string;
+}
+
+export interface StructuralReport {
+  similarity: number;                 // 0..100
+  totalTokensA: number;
+  totalTokensB: number;
+  coveredTokens: number;              // sum of match lengths (both sides count)
+  matches: StructuralMatch[];         // sorted by length desc
+  filePairs: { a: string; b: string; similarity: number; matchedTokens: number }[];
+}
+
+// Keywords across the languages the tool advertises — kept as-is; anything
+// else that looks like an identifier collapses to "ID".
+const KEYWORDS = new Set<string>([
+  // JS/TS
+  "function","return","if","else","for","while","do","break","continue","let",
+  "const","var","class","extends","new","this","super","import","export","from",
+  "default","try","catch","finally","throw","switch","case","typeof",
+  "instanceof","in","of","null","undefined","true","false","async","await",
+  "yield","void","delete",
+  // Python
+  "def","lambda","pass","None","True","False","and","or","not","is","elif",
+  "with","as","global","nonlocal","raise","assert","import","from",
+  // Java / C# / C / C++
+  "public","private","protected","static","void","int","long","short","float",
+  "double","boolean","bool","char","String","struct","namespace","using",
+  "interface","abstract","final","virtual","override","enum","sizeof",
+  "typedef","include","throws","implements",
+  // Go / Rust
+  "func","fn","mut","pub","impl","trait","package","chan","go","defer",
+  "select","match",
+  // PHP / Ruby / Kotlin / Swift misc
+  "echo","end","then","begin","fun","val","when","init","object","protocol",
+]);
+
+// Tokenizer — line-aware, comment/string-aware, multi-language.
+export function tokenize(source: string): { tokens: Token[]; rawLines: string[] } {
+  const rawLines = source.split("\n");
+  const tokens: Token[] = [];
+  let i = 0;
+  let line = 1;
+  const n = source.length;
+
+  const advanceLines = (s: string) => {
+    for (let k = 0; k < s.length; k++) if (s.charCodeAt(k) === 10) line++;
+  };
+
+  while (i < n) {
+    const c = source[i];
+    const c2 = source.substr(i, 2);
+
+    // Whitespace
+    if (c === " " || c === "\t" || c === "\r") { i++; continue; }
+    if (c === "\n") { line++; i++; continue; }
+
+    // Line comments: // and #
+    if (c2 === "//" || c === "#") {
+      const nl = source.indexOf("\n", i);
+      i = nl === -1 ? n : nl;
+      continue;
+    }
+    // Block comments: /* ... */
+    if (c2 === "/*") {
+      const end = source.indexOf("*/", i + 2);
+      const chunk = source.slice(i, end === -1 ? n : end + 2);
+      advanceLines(chunk);
+      i = end === -1 ? n : end + 2;
+      continue;
+    }
+    // Python triple-string comments/docstrings
+    if (source.substr(i, 3) === '"""' || source.substr(i, 3) === "'''") {
+      const quote = source.substr(i, 3);
+      const end = source.indexOf(quote, i + 3);
+      const chunk = source.slice(i, end === -1 ? n : end + 3);
+      advanceLines(chunk);
+      tokens.push({ value: "STR", line, raw: chunk.slice(0, 20) });
+      i = end === -1 ? n : end + 3;
+      continue;
+    }
+
+    // Strings
+    if (c === '"' || c === "'" || c === "`") {
+      const startLine = line;
+      const quote = c;
+      let j = i + 1;
+      while (j < n && source[j] !== quote) {
+        if (source[j] === "\\") { j += 2; continue; }
+        if (source[j] === "\n") line++;
+        j++;
+      }
+      tokens.push({ value: "STR", line: startLine, raw: source.slice(i, Math.min(j + 1, i + 30)) });
+      i = j + 1;
+      continue;
+    }
+
+    // Numbers
+    if (c >= "0" && c <= "9") {
+      let j = i;
+      while (j < n && /[0-9a-fA-Fx.eE_]/.test(source[j])) j++;
+      tokens.push({ value: "NUM", line, raw: source.slice(i, j) });
+      i = j;
+      continue;
+    }
+
+    // Identifiers / keywords
+    if (/[A-Za-z_$]/.test(c)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_$]/.test(source[j])) j++;
+      const word = source.slice(i, j);
+      tokens.push({
+        value: KEYWORDS.has(word) ? word : "ID",
+        line,
+        raw: word,
+      });
+      i = j;
+      continue;
+    }
+
+    // Multi-char operators
+    const three = source.substr(i, 3);
+    if (["===","!==","<<=",">>=","**=","...","&&=","||="].includes(three)) {
+      tokens.push({ value: three, line, raw: three }); i += 3; continue;
+    }
+    const two = c2;
+    if (["==","!=","<=",">=","=>","->","::","++","--","&&","||","+=","-=","*=","/=","%=","**","<<",">>","??"].includes(two)) {
+      tokens.push({ value: two, line, raw: two }); i += 2; continue;
+    }
+
+    // Single-char punctuation / operator
+    if (/[+\-*/%=<>!&|^~?:;,.\[\](){}@]/.test(c)) {
+      tokens.push({ value: c, line, raw: c }); i++; continue;
+    }
+
+    // Unknown byte — skip
+    i++;
+  }
+
+  return { tokens, rawLines };
+}
+
+// Greedy String Tiling — matches sequences ≥ minMatch, marking tiles so
+// no token is reused across matches. Reference: Michael J. Wise, 1996.
+function greedyStringTiling(
+  a: Token[],
+  b: Token[],
+  minMatch = 9,
+): { startA: number; startB: number; length: number }[] {
+  const markedA = new Uint8Array(a.length);
+  const markedB = new Uint8Array(b.length);
+  const tiles: { startA: number; startB: number; length: number }[] = [];
+  const MAX_ITERS = 400;
+
+  for (let iter = 0; iter < MAX_ITERS; iter++) {
+    let maxLen = minMatch;
+    const candidates: { startA: number; startB: number; length: number }[] = [];
+
+    for (let i = 0; i < a.length; i++) {
+      if (markedA[i]) continue;
+      for (let j = 0; j < b.length; j++) {
+        if (markedB[j]) continue;
+        let k = 0;
+        while (
+          i + k < a.length && j + k < b.length &&
+          !markedA[i + k] && !markedB[j + k] &&
+          a[i + k].value === b[j + k].value
+        ) k++;
+        if (k >= maxLen) {
+          if (k > maxLen) { candidates.length = 0; maxLen = k; }
+          candidates.push({ startA: i, startB: j, length: k });
+        }
+      }
+    }
+
+    if (!candidates.length) break;
+
+    for (const m of candidates) {
+      // Skip if any token in tile was marked by an earlier candidate this round
+      let ok = true;
+      for (let k = 0; k < m.length; k++) {
+        if (markedA[m.startA + k] || markedB[m.startB + k]) { ok = false; break; }
+      }
+      if (!ok) continue;
+      for (let k = 0; k < m.length; k++) {
+        markedA[m.startA + k] = 1;
+        markedB[m.startB + k] = 1;
+      }
+      tiles.push(m);
+    }
+  }
+
+  return tiles.sort((x, y) => y.length - x.length);
+}
+
+// Parse a bundle produced by the page (headers of the form "// ── ARQUIVO: <path> ──")
+// into per-file token lists.
+export function parseBundleToFiles(bundle: string): FileTokens[] {
+  const parts = bundle.split(/\/\/ ── ARQUIVO: (.+?) ──\n/);
+  // parts: [prefix, file1, body1, file2, body2, ...]
+  const out: FileTokens[] = [];
+  for (let i = 1; i < parts.length; i += 2) {
+    const file = parts[i].trim();
+    const body = parts[i + 1] ?? "";
+    const { tokens, rawLines } = tokenize(body);
+    if (tokens.length >= 5) out.push({ file, tokens, rawLines });
+  }
+  return out;
+}
+
+function snippetFor(rawLines: string[], line: number, span = 2): string {
+  const start = Math.max(0, line - 1 - span);
+  const end = Math.min(rawLines.length, line - 1 + span + 1);
+  return rawLines.slice(start, end).join("\n");
+}
+
+// Full report: parses both bundles, compares each file in A against each in B,
+// aggregates the top matches. Bounded to keep browser time reasonable.
+export function analyzeStructural(
+  bundleA: string,
+  bundleB: string,
+  opts: { minMatch?: number; maxPairs?: number; maxMatches?: number } = {},
+): StructuralReport {
+  const minMatch = opts.minMatch ?? 9;
+  const maxMatches = opts.maxMatches ?? 15;
+
+  const filesA = parseBundleToFiles(bundleA);
+  const filesB = parseBundleToFiles(bundleB);
+
+  let coveredA = 0, coveredB = 0;
+  let totalA = 0, totalB = 0;
+  filesA.forEach(f => totalA += f.tokens.length);
+  filesB.forEach(f => totalB += f.tokens.length);
+
+  const matches: StructuralMatch[] = [];
+  const filePairs: StructuralReport["filePairs"] = [];
+
+  for (const fa of filesA) {
+    for (const fb of filesB) {
+      // Cheap guard: skip trivially small pairs
+      if (fa.tokens.length < minMatch || fb.tokens.length < minMatch) continue;
+      const tiles = greedyStringTiling(fa.tokens, fb.tokens, minMatch);
+      if (!tiles.length) continue;
+
+      let pairCovered = 0;
+      for (const t of tiles) {
+        pairCovered += t.length;
+        const aStart = fa.tokens[t.startA].line;
+        const aEnd = fa.tokens[t.startA + t.length - 1].line;
+        const bStart = fb.tokens[t.startB].line;
+        const bEnd = fb.tokens[t.startB + t.length - 1].line;
+        matches.push({
+          fileA: fa.file,
+          fileB: fb.file,
+          length: t.length,
+          linesA: [aStart, aEnd],
+          linesB: [bStart, bEnd],
+          snippetA: snippetFor(fa.rawLines, aStart),
+          snippetB: snippetFor(fb.rawLines, bStart),
+        });
+      }
+      coveredA += pairCovered;
+      coveredB += pairCovered;
+      const pairSim = (2 * pairCovered) / (fa.tokens.length + fb.tokens.length) * 100;
+      filePairs.push({
+        a: fa.file,
+        b: fb.file,
+        similarity: Math.min(100, Math.round(pairSim)),
+        matchedTokens: pairCovered,
+      });
+    }
+  }
+
+  matches.sort((x, y) => y.length - x.length);
+  filePairs.sort((x, y) => y.similarity - x.similarity);
+
+  const denom = totalA + totalB;
+  const similarity = denom > 0
+    ? Math.min(100, Math.round((coveredA + coveredB) / denom * 100))
+    : 0;
+
+  return {
+    similarity,
+    totalTokensA: totalA,
+    totalTokensB: totalB,
+    coveredTokens: coveredA,
+    matches: matches.slice(0, maxMatches),
+    filePairs: filePairs.slice(0, 10),
+  };
+}
+
+// Format the report as deterministic evidence to inject into the LLM prompt.
+export function formatEvidenceForLLM(r: StructuralReport): string {
+  if (!r.matches.length) {
+    return `EVIDÊNCIA ESTRUTURAL DETERMINÍSTICA (tokenização + Greedy String Tiling):
+- Similaridade estrutural global: ${r.similarity}%
+- Tokens analisados: A=${r.totalTokensA}, B=${r.totalTokensB}
+- Nenhum bloco de tokens estruturalmente idêntico (≥9 tokens) foi encontrado.`;
+  }
+
+  const lines: string[] = [];
+  lines.push("EVIDÊNCIA ESTRUTURAL DETERMINÍSTICA (tokenização + Greedy String Tiling estilo JPlag):");
+  lines.push(`- Similaridade estrutural global: ${r.similarity}% (fórmula 2·cobertura/(|A|+|B|))`);
+  lines.push(`- Tokens normalizados: A=${r.totalTokensA}, B=${r.totalTokensB}, cobertos por matches=${r.coveredTokens}`);
+  lines.push("- Identificadores e literais foram normalizados; renomear variáveis NÃO afeta o resultado.");
+  lines.push("");
+  lines.push("PARES DE ARQUIVOS COM MAIOR SIMILARIDADE ESTRUTURAL:");
+  for (const p of r.filePairs.slice(0, 5)) {
+    lines.push(`  • ${p.a}  ↔  ${p.b}  —  ${p.similarity}% (${p.matchedTokens} tokens)`);
+  }
+  lines.push("");
+  lines.push("BLOCOS ESTRUTURALMENTE IDÊNTICOS (cite estes trechos no parecer):");
+  for (let i = 0; i < Math.min(r.matches.length, 8); i++) {
+    const m = r.matches[i];
+    lines.push(`\n[Match #${i + 1}] ${m.length} tokens idênticos`);
+    lines.push(`  A: ${m.fileA}  linhas ${m.linesA[0]}–${m.linesA[1]}`);
+    lines.push(`  B: ${m.fileB}  linhas ${m.linesB[0]}–${m.linesB[1]}`);
+    lines.push(`  --- Trecho A ---\n${m.snippetA}`);
+    lines.push(`  --- Trecho B ---\n${m.snippetB}`);
+  }
+  return lines.join("\n");
+}
