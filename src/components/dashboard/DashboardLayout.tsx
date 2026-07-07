@@ -5,10 +5,11 @@
    LayoutDashboard, LogOut, ChevronLeft, ChevronRight, Building2,
    UserCircle, Shield, Database, Camera, FileQuestion, Briefcase,
    Lock, Link2, BarChart3, History, Clock, ScanText, FileStack, Network, Monitor,
-  Search, Bell, Settings, Inbox
+  Search, Bell, Settings, Inbox, Sun, Moon
  } from "lucide-react";
  import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { useOrganization } from "@/hooks/useOrganization";
 import OrgSwitcher from "@/components/dashboard/OrgSwitcher";
 import ResponsibilityTerm from "@/components/dashboard/ResponsibilityTerm";
@@ -53,6 +54,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [profileName, setProfileName] = useState<string>("");
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -277,6 +279,14 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                 className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all"
               >
                 <Settings className="h-5 w-5" />
+              </button>
+              <button
+                onClick={toggleTheme}
+                title={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+                aria-label="Alternar tema"
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all"
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </button>
               <div className="h-8 w-px bg-white/5 mx-2" />
               <button
