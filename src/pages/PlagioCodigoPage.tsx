@@ -549,6 +549,22 @@ ${codeB.slice(0, 18000)}`;
               </span>
             </div>
 
+            {/* Manifesto — pipeline determinístico + LLM */}
+            <div className="flex items-start gap-3 text-[11px] text-white/40 bg-primary/[0.04] border border-primary/15 rounded-2xl p-4">
+              <Fingerprint className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+              <div className="space-y-1">
+                <p className="font-bold text-primary uppercase tracking-widest text-[10px]">
+                  Pipeline determinístico + LLM
+                </p>
+                <p className="leading-relaxed">
+                  Tokenização estrutural (estilo <strong className="text-white/60">JPlag</strong>, Greedy String Tiling) roda no
+                  navegador antes da IA. Renomear variáveis ou traduzir strings não derruba a similaridade —
+                  o comparador lê a <em>forma</em> do código, não os nomes. O resultado alimenta o parecer da LLM
+                  como evidência determinística citável linha a linha.
+                </p>
+              </div>
+            </div>
+
             <Button onClick={handleAnalyze} disabled={loading || !codeA || !codeB}
               className="w-full bg-primary text-black font-bold h-12 rounded-2xl hover:bg-white transition-all shadow-glow-md">
               {loading
