@@ -340,7 +340,8 @@ const PlagioCodigoPage = () => {
   const [copied, setCopied]       = useState(false);
   const [saving, setSaving]       = useState(false);
   const [selectedCase, setSelectedCase] = useState("none");
-  const [accessToken, setAccessToken]   = useState("");
+  const [tokenA, setTokenA]       = useState("");
+  const [tokenB, setTokenB]       = useState("");
   const [repoUrlA, setRepoUrlA]   = useState("");
   const [repoUrlB, setRepoUrlB]   = useState("");
   const [fetching, setFetching]   = useState<"A" | "B" | null>(null);
@@ -356,10 +357,11 @@ const PlagioCodigoPage = () => {
 
   const doFetch = async (side: "A" | "B") => {
     const url = side === "A" ? repoUrlA : repoUrlB;
+    const token = side === "A" ? tokenA : tokenB;
     if (!url.trim()) { toast({ title: "Informe a URL do repositório", variant: "destructive" }); return; }
     setFetching(side);
     try {
-      const code = await fetchRepo(url, accessToken || undefined, strictMode);
+      const code = await fetchRepo(url, token || undefined, strictMode);
       const count = (code.match(/\/\/ ── ARQUIVO:/g) || []).length;
       if (side === "A") { setCodeA(code); setFilesA(count); }
       else              { setCodeB(code); setFilesB(count); }
@@ -550,17 +552,38 @@ ${codeB.slice(0, 18000)}`;
               <Code2 className="h-24 w-24" />
             </div>
 
-            {/* Token */}
-            <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+            {/* Tokens A e B — independentes (permite comparar repos de contas/hosts diferentes) */}
+            <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-bold text-white">Token de Acesso</h3>
+                <h3 className="text-sm font-bold text-white">Tokens de Acesso</h3>
                 <Badge variant="outline" className="ml-auto text-[9px] text-white/30 border-white/10">Opcional — repos públicos não precisam</Badge>
               </div>
-              <Input type="password"
-                placeholder="GitHub: ghp_xxx...  ·  GitLab: glpat-xxx..."
-                value={accessToken} onChange={e => setAccessToken(e.target.value)}
-                className="bg-black/40 border-white/10 h-9 rounded-xl text-xs" />
+              <div className="grid gap-2 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-1.5">
+                    <span className="h-4 w-4 rounded-md bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold">A</span>
+                    Token do Código A
+                  </label>
+                  <Input type="password"
+                    placeholder="ghp_xxx  ou  glpat-xxx"
+                    value={tokenA} onChange={e => setTokenA(e.target.value)}
+                    className="bg-black/40 border-white/10 h-9 rounded-xl text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-1.5">
+                    <span className="h-4 w-4 rounded-md bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold">B</span>
+                    Token do Código B
+                  </label>
+                  <Input type="password"
+                    placeholder="ghp_xxx  ou  glpat-xxx"
+                    value={tokenB} onChange={e => setTokenB(e.target.value)}
+                    className="bg-black/40 border-white/10 h-9 rounded-xl text-xs" />
+                </div>
+              </div>
+              <p className="text-[10px] text-white/30 leading-relaxed">
+                Cada lado usa seu próprio token — permite comparar, por exemplo, um repo GitHub privado (A) com um GitLab self-hosted (B), ou duas contas diferentes.
+              </p>
             </div>
 
             {/* Painéis A e B */}
