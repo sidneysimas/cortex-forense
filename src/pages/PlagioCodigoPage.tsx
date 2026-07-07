@@ -340,7 +340,8 @@ const PlagioCodigoPage = () => {
   const [copied, setCopied]       = useState(false);
   const [saving, setSaving]       = useState(false);
   const [selectedCase, setSelectedCase] = useState("none");
-  const [accessToken, setAccessToken]   = useState("");
+  const [tokenA, setTokenA]       = useState("");
+  const [tokenB, setTokenB]       = useState("");
   const [repoUrlA, setRepoUrlA]   = useState("");
   const [repoUrlB, setRepoUrlB]   = useState("");
   const [fetching, setFetching]   = useState<"A" | "B" | null>(null);
@@ -356,10 +357,11 @@ const PlagioCodigoPage = () => {
 
   const doFetch = async (side: "A" | "B") => {
     const url = side === "A" ? repoUrlA : repoUrlB;
+    const token = side === "A" ? tokenA : tokenB;
     if (!url.trim()) { toast({ title: "Informe a URL do repositório", variant: "destructive" }); return; }
     setFetching(side);
     try {
-      const code = await fetchRepo(url, accessToken || undefined, strictMode);
+      const code = await fetchRepo(url, token || undefined, strictMode);
       const count = (code.match(/\/\/ ── ARQUIVO:/g) || []).length;
       if (side === "A") { setCodeA(code); setFilesA(count); }
       else              { setCodeB(code); setFilesB(count); }
