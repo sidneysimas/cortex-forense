@@ -600,6 +600,18 @@ ${codeB.slice(0, 18000)}`;
                   o comparador lê a <em>forma</em> do código, não os nomes. O resultado alimenta o parecer da LLM
                   como evidência determinística citável linha a linha.
                 </p>
+                <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={strictMode}
+                    onChange={e => setStrictMode(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <Lock className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                    Modo estrito (falhar em vez de truncar)
+                  </span>
+                </label>
               </div>
             </div>
 
