@@ -4,7 +4,7 @@ import {
   Loader2, Copy, Check, Code2, Save, X,
   ShieldAlert, ShieldCheck, ShieldQuestion, FileCode2, AlertCircle,
   KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare, Lock,
-  FileText, Download
+  FileText
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
