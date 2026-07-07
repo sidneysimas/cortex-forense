@@ -105,3 +105,119 @@
     text-shadow: 0 0 20px hsl(30 90% 50% / 0.5);
   }
 }
+
+/* ============================================================
+   LIGHT MODE
+   Activated by adding `.light` class to <html>.
+   Overrides both semantic tokens AND the hardcoded dark utility
+   classes used across the dashboard, so no per-component refactor
+   is required.
+   ============================================================ */
+html.light {
+  --background: 40 30% 97%;
+  --foreground: 220 25% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 12%;
+
+  --primary: 25 90% 48%;
+  --primary-foreground: 40 30% 98%;
+
+  --secondary: 40 20% 92%;
+  --secondary-foreground: 220 25% 15%;
+
+  --muted: 40 15% 94%;
+  --muted-foreground: 220 10% 40%;
+
+  --accent: 25 85% 55%;
+  --accent-foreground: 40 30% 98%;
+
+  --border: 220 15% 88%;
+  --input: 220 15% 88%;
+  --ring: 25 90% 48%;
+
+  --sidebar-background: 40 25% 96%;
+  --sidebar-foreground: 220 25% 15%;
+  --sidebar-accent: 40 20% 92%;
+  --sidebar-accent-foreground: 220 25% 15%;
+  --sidebar-border: 220 15% 88%;
+
+  --glass-bg: hsl(0 0% 100% / 0.7);
+  --glass-border: hsl(25 90% 48% / 0.2);
+  --shadow-glow: 0 0 40px hsl(25 90% 48% / 0.15);
+  --shadow-card: 0 8px 32px hsl(220 20% 60% / 0.15);
+
+  color-scheme: light;
+}
+
+/* Override hardcoded near-black backgrounds */
+html.light .bg-\[\#020202\],
+html.light .bg-\[\#050505\]\/80,
+html.light .bg-\[\#050505\],
+html.light .bg-\[\#0a0a0a\],
+html.light .bg-\[\#0f0f0f\],
+html.light .bg-\[\#121212\],
+html.light .bg-premium-black,
+html.light .bg-premium-charcoal {
+  background-color: hsl(40 25% 97%) !important;
+}
+
+html.light .bg-black,
+html.light .bg-black\/20,
+html.light .bg-black\/30,
+html.light .bg-black\/40,
+html.light .bg-black\/50,
+html.light .bg-black\/60,
+html.light .bg-black\/80,
+html.light .bg-black\/85,
+html.light .bg-black\/95 {
+  background-color: hsl(0 0% 100% / 0.6) !important;
+}
+
+/* White text becomes dark ink */
+html.light .text-white {
+  color: hsl(220 25% 12%) !important;
+}
+html.light .text-white\/90 { color: hsl(220 25% 15%) !important; }
+html.light .text-white\/80 { color: hsl(220 20% 20%) !important; }
+html.light .text-white\/70 { color: hsl(220 15% 28%) !important; }
+html.light .text-white\/60 { color: hsl(220 12% 35%) !important; }
+html.light .text-white\/50 { color: hsl(220 10% 42%) !important; }
+html.light .text-white\/40 { color: hsl(220 10% 48%) !important; }
+html.light .text-white\/30 { color: hsl(220 8% 55%) !important; }
+html.light .text-white\/20 { color: hsl(220 8% 62%) !important; }
+html.light .text-white\/10 { color: hsl(220 8% 72%) !important; }
+
+/* White borders become soft dark borders */
+html.light .border-white,
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/20 {
+  border-color: hsl(220 15% 88%) !important;
+}
+
+/* White transparent surfaces become soft gray surfaces */
+html.light .bg-white\/\[0\.02\],
+html.light .bg-white\/\[0\.03\],
+html.light .bg-white\/\[0\.05\],
+html.light .bg-white\/5,
+html.light .bg-white\/10,
+html.light .bg-white\/20 {
+  background-color: hsl(220 15% 94%) !important;
+}
+
+/* Selection & noise texture tweaks */
+html.light body {
+  background-color: hsl(var(--background));
+}
+html.light .selection\:bg-primary\/30::selection {
+  background-color: hsl(var(--primary) / 0.25);
+}
+
+/* Ensure the active nav pill keeps readable contrast */
+html.light .bg-primary.text-black {
+  color: hsl(var(--primary-foreground)) !important;
+}
