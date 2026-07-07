@@ -141,7 +141,7 @@ function detectProvider(url: string): Provider {
 }
 
 // ── Repo fetchers ─────────────────────────────────────────────────────────────
-const CODE_EXTENSIONS = /\.(py|js|ts|tsx|jsx|java|c|cpp|h|cs|go|rs|php|swift|kt|sql|sh|lua|rb|r|scala|dart)$/i;
+const CODE_EXTENSIONS = /\.(py|js|mjs|cjs|ts|tsx|jsx|java|c|cpp|cc|hh|hpp|h|cs|go|rs|php|swift|kt|kts|sql|sh|bash|zsh|lua|rb|r|scala|dart|vue|svelte|md|mdx|txt|yaml|yml|json|toml|ini|xml|html|css|scss)$/i;
 const IGNORE_PATHS    = /node_modules|dist|\.next|build|__pycache__|\.git|vendor|coverage/;
 const MAX_FILES = 30;
 const MAX_DEPTH = 3;
