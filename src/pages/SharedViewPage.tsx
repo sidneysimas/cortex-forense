@@ -22,38 +22,26 @@ const SharedViewPage = () => {
   const loadSharedData = async (pwd?: string) => {
     setLoading(true);
     try {
-      const { data: link } = await supabase
-        .from("shared_links")
-        .select("*")
-        .eq("token", token)
-        .eq("is_active", true)
-        .single();
-
-      if (!link) { setError("Link expirado ou inválido."); setLoading(false); return; }
-      if (new Date(link.expires_at) < new Date()) { setError("Este link expirou."); setLoading(false); return; }
-      if (link.max_views > 0 && link.view_count >= link.max_views) { setError("Limite de visualizações atingido."); setLoading(false); return; }
-      if (link.password_hash && !pwd) { setNeedsPassword(true); setLoading(false); return; }
-      if (link.password_hash && pwd) {
-        const encoder = new TextEncoder();
-        const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(pwd));
-        const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
-        if (hashHex !== link.password_hash) { setError("Senha incorreta."); setLoading(false); return; }
+      const { data: result, error: rpcErr } = await supabase.rpc("get_shared_link_bundle", {
+        _token: token as string,
+        _password: pwd ?? null,
+      });
+      if (rpcErr || !result) { setError("Link expirado ou inválido."); setLoading(false); return; }
+      const bundle = result as any;
+      if (bundle.needs_password) { setNeedsPassword(true); setLoading(false); return; }
+      if (bundle.error) {
+        const map: Record<string, string> = {
+          not_found: "Link expirado ou inválido.",
+          expired: "Este link expirou.",
+          max_views_reached: "Limite de visualizações atingido.",
+          wrong_password: "Senha incorreta.",
+          invalid_token: "Link inválido.",
+        };
+        setError(map[bundle.error] || "Erro ao carregar dados.");
+        setLoading(false);
+        return;
       }
-
-      let evidences: any[] = [];
-      let caseData: any = null;
-
-      if (link.case_id) {
-        const { data: c } = await supabase.from("cases").select("*").eq("id", link.case_id).single();
-        caseData = c;
-        const { data: evs } = await supabase.from("evidences").select("*").eq("case_id", link.case_id).order("created_at", { ascending: false });
-        evidences = evs || [];
-      } else if (link.evidence_id) {
-        const { data: ev } = await supabase.from("evidences").select("*").eq("id", link.evidence_id).single();
-        if (ev) evidences = [ev];
-      }
-
-      setData({ link, caseData, evidences });
+      setData({ link: bundle.link, caseData: bundle.caseData, evidences: bundle.evidences || [] });
     } catch {
       setError("Erro ao carregar dados.");
     } finally {
