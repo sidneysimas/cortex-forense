@@ -176,7 +176,7 @@ async function fetchGitHubRepo(url: string, token?: string, strict = false): Pro
     throw new Error(`Modo estrito: repositório GitHub tem ${collected.length} arquivos de código, excede o limite de ${MAX_FILES}. Reduza o escopo ou desligue o modo estrito.`);
   }
   const files = collected.slice(0, MAX_FILES);
-  if (!files.length) throw new Error("Nenhum arquivo de código encontrado no repositório GitHub.");
+  if (!files.length) throw new Error("Nenhum arquivo compatível encontrado no repositório GitHub (extensões aceitas: código-fonte, markdown, yaml, json, txt e afins). Verifique se a URL aponta para o repositório correto e se ele não está vazio.");
   let out = `// ═══ REPOSITÓRIO (GitHub): ${owner}/${repo} — ${files.length} arquivos ═══\n\n`;
   for (const f of files) {
     const txt = await fetch(f.download_url).then(r => r.text()).catch(() => "// [erro ao ler arquivo]");
