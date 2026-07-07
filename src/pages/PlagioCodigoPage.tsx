@@ -354,6 +354,8 @@ const PlagioCodigoPage = () => {
   const [structural, setStructural] = useState<StructuralReport | null>(null);
   const [evidenceHash, setEvidenceHash] = useState<string | null>(null);
   const [strictMode, setStrictMode] = useState(false);
+  const [savedEvidenceId, setSavedEvidenceId] = useState<string | null>(null);
+  const [generatingLaudo, setGeneratingLaudo] = useState(false);
 
   const { verdict, similarity } = parseVerdict(result);
 
