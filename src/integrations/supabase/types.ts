@@ -574,6 +574,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_shared_link_bundle: {
+        Args: { _password?: string; _token: string }
+        Returns: Json
+      }
       get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
       user_belongs_to_org: {
         Args: { _org_id: string; _user_id: string }
@@ -586,6 +590,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      verify_evidence_public: {
+        Args: { _id: string }
+        Returns: {
+          blockchain_network: string
+          blockchain_tx: string
+          created_at: string
+          file_hash: string
+          id: string
+          module: string
+          title: string
+          tsa_timestamp: string
+          tsa_token: string
+          verification_url: string
+        }[]
       }
     }
     Enums: {
