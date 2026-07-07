@@ -588,7 +588,12 @@ ${codeB.slice(0, 18000)}`;
                     inputContent: `Origem A: ${repoUrlA || "Upload"}\nOrigem B: ${repoUrlB || "Upload"}\nVeredito: ${verdict || "—"}\nSimilaridade: ${similarity ?? "—"}%`,
                     resultContent: result,
                     caseId: selectedCase !== "none" ? selectedCase : undefined,
-                    metadata: { repoUrlA, repoUrlB, context, verdict, similarity },
+                    metadata: {
+                      repoUrlA, repoUrlB, context, verdict, similarity,
+                      structuralSimilarity: structural?.similarity ?? null,
+                      structuralMatches: structural?.matches.slice(0, 10) ?? [],
+                      structuralFilePairs: structural?.filePairs ?? [],
+                    },
                   });
                   setSaving(false);
                   toast({ title: "Laudo salvo na cadeia de custódia!" });
@@ -612,6 +617,60 @@ ${codeB.slice(0, 18000)}`;
             <div className="space-y-3 mb-5 p-4 rounded-2xl bg-white/[0.03] border border-white/10">
               <VerdictBadge verdict={verdict} />
               <SimilarityMeter value={similarity} />
+            </div>
+          )}
+
+          {/* Evidência estrutural determinística (JPlag-style) */}
+          {structural && (
+            <div className="mb-5 p-4 rounded-2xl bg-primary/[0.04] border border-primary/20 space-y-3">
+              <div className="flex items-center gap-2">
+                <Fingerprint className="h-4 w-4 text-primary" />
+                <h4 className="text-xs font-bold uppercase tracking-widest text-primary">
+                  Evidência estrutural determinística
+                </h4>
+                <Badge variant="outline" className="ml-auto text-[9px] text-white/40 border-white/10 font-mono">
+                  JPlag-style · GST
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-2 rounded-xl bg-black/30">
+                  <p className="text-[9px] text-white/40 uppercase tracking-widest">Similaridade</p>
+                  <p className="text-2xl font-bold text-primary">{structural.similarity}%</p>
+                </div>
+                <div className="p-2 rounded-xl bg-black/30">
+                  <p className="text-[9px] text-white/40 uppercase tracking-widest">Tokens A/B</p>
+                  <p className="text-sm font-mono text-white/70 mt-1">
+                    {structural.totalTokensA}/{structural.totalTokensB}
+                  </p>
+                </div>
+                <div className="p-2 rounded-xl bg-black/30">
+                  <p className="text-[9px] text-white/40 uppercase tracking-widest">Blocos idênticos</p>
+                  <p className="text-sm font-mono text-white/70 mt-1">{structural.matches.length}</p>
+                </div>
+              </div>
+              {structural.filePairs.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-widest text-white/40 font-bold flex items-center gap-1">
+                    <GitCompare className="h-3 w-3" /> Pares mais similares
+                  </p>
+                  <div className="space-y-1 max-h-[120px] overflow-auto custom-scrollbar">
+                    {structural.filePairs.slice(0, 5).map((p, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[11px] font-mono">
+                        <span className="text-white/50 truncate flex-1">{p.a}</span>
+                        <span className="text-white/20">↔</span>
+                        <span className="text-white/50 truncate flex-1">{p.b}</span>
+                        <span className={`font-bold ${p.similarity >= 70 ? "text-red-400" : p.similarity >= 40 ? "text-amber-400" : "text-green-400"}`}>
+                          {p.similarity}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-[10px] text-white/30 leading-relaxed border-t border-white/5 pt-2">
+                Tokenização normaliza identificadores e literais — renomear variáveis <strong className="text-white/50">não</strong> afeta este número.
+                Reproduzível: mesmo input, mesmo resultado.
+              </p>
             </div>
           )}
 
