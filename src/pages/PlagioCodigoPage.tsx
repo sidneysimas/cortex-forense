@@ -318,6 +318,7 @@ const PlagioCodigoPage = () => {
   const [filesB, setFilesB]       = useState(0);
   const [modeA, setModeA]         = useState<ImportMode>("url");
   const [modeB, setModeB]         = useState<ImportMode>("url");
+  const [structural, setStructural] = useState<StructuralReport | null>(null);
 
   const { verdict, similarity } = parseVerdict(result);
 
@@ -360,9 +361,22 @@ const PlagioCodigoPage = () => {
     }
     setLoading(true);
     setResult("");
+    setStructural(null);
 
     const techA = detectTechStack(codeA).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
     const techB = detectTechStack(codeB).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
+
+    // ─── Camada 1: análise estrutural determinística (estilo JPlag) ───
+    // Roda no browser, antes do LLM. Alimenta o prompt como evidência
+    // objetiva citável — conforme Manifesto Metodológico CortexForense.
+    let report: StructuralReport | null = null;
+    try {
+      report = analyzeStructural(codeA, codeB, { minMatch: 9 });
+      setStructural(report);
+    } catch (e) {
+      console.warn("Falha na análise estrutural:", e);
+    }
+    const evidenceBlock = report ? formatEvidenceForLLM(report) : "";
 
     const prompt = `[PERÍCIA DE PLÁGIO DE SOFTWARE — ANÁLISE FORENSE JUDICIAL]
 
@@ -379,6 +393,12 @@ INSTRUÇÕES OBRIGATÓRIAS:
 4. Compare LÓGICA ALGORÍTMICA — detecte plágio cross-language (ex: Python traduzido para JS, Java reescrito em C#).
 5. Identifique ofuscação deliberada (renomeação de variáveis, inversão de condições, reordenação de blocos).
 6. Analise TECNOLOGIAS em uso: frameworks, bibliotecas, padrões arquiteturais — compare entre A e B.
+7. Use a EVIDÊNCIA ESTRUTURAL abaixo como base objetiva do parecer — cite os pares de arquivos e linhas
+   identificados; a similaridade estrutural determinística tem precedência sobre a impressão textual.
+   A tokenização já ignora nomes de variáveis, então blocos idênticos ali comprovam correspondência
+   estrutural independentemente de renomeação.
+
+${evidenceBlock}
 
 CÓDIGO A (${filesA} arquivos — tecnologias: ${techA}):
 ${codeA.slice(0, 18000)}
