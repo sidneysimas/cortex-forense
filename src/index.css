@@ -167,10 +167,13 @@ html.light .bg-premium-charcoal {
 
 html.light .bg-black,
 html.light .bg-black\/20,
+html.light .bg-black\/30,
 html.light .bg-black\/40,
 html.light .bg-black\/50,
 html.light .bg-black\/60,
-html.light .bg-black\/80 {
+html.light .bg-black\/80,
+html.light .bg-black\/85,
+html.light .bg-black\/95 {
   background-color: hsl(0 0% 100% / 0.6) !important;
 }
 
