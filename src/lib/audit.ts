@@ -205,4 +205,6 @@ export async function saveEvidence({
     evidenceId: inserted?.id,
     caseId,
   });
+
+  return inserted?.id ?? null;
 }
