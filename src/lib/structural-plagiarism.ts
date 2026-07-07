@@ -43,6 +43,8 @@ export interface StructuralReport {
   coveredTokens: number;              // sum of match lengths (both sides count)
   matches: StructuralMatch[];         // sorted by length desc
   filePairs: { a: string; b: string; similarity: number; matchedTokens: number }[];
+  minMatchUsed: number;               // effective minMatch (adaptive or fixed)
+  languageProfile: string;            // e.g. "python" / "c-family" / "mixed"
 }
 
 // Keywords across the languages the tool advertises — kept as-is; anything
@@ -184,9 +186,11 @@ function greedyStringTiling(
   const markedA = new Uint8Array(a.length);
   const markedB = new Uint8Array(b.length);
   const tiles: { startA: number; startB: number; length: number }[] = [];
-  const MAX_ITERS = 400;
-
-  for (let iter = 0; iter < MAX_ITERS; iter++) {
+  // No artificial iteration cap: GST terminates naturally when no candidate
+  // ≥ minMatch remains. Hard safety upper bound = tokens/minMatch on either
+  // side, so runtime is bounded and deterministic.
+  const hardCap = Math.ceil((a.length + b.length) / Math.max(minMatch, 1)) + 8;
+  for (let iter = 0; iter < hardCap; iter++) {
     let maxLen = minMatch;
     const candidates: { startA: number; startB: number; length: number }[] = [];
 
@@ -242,6 +246,40 @@ export function parseBundleToFiles(bundle: string): FileTokens[] {
   return out;
 }
 
+// Adaptive minMatch picker — different languages have different token density
+// per meaningful construct. Python is terse (short minMatch → higher recall
+// without false positives). Java/C# are verbose (longer minMatch avoids
+// noise from getter/setter boilerplate). Reference: JPlag defaults per lang.
+function detectLanguageProfile(files: FileTokens[]): { profile: string; minMatch: number } {
+  const exts = new Set<string>();
+  for (const f of files) {
+    const m = f.file.match(/\.(\w+)$/);
+    if (m) exts.add(m[1].toLowerCase());
+  }
+  const has = (...xs: string[]) => xs.some(x => exts.has(x));
+  if (exts.size === 0) return { profile: "unknown", minMatch: 9 };
+  if (has("java", "cs", "kt", "scala")) return { profile: "jvm/dotnet", minMatch: 12 };
+  if (has("c", "cpp", "h", "hpp"))       return { profile: "c-family",   minMatch: 10 };
+  if (has("go", "rs", "swift"))          return { profile: "systems",    minMatch: 10 };
+  if (has("py", "rb", "lua"))            return { profile: "scripting",  minMatch: 7  };
+  if (has("js", "ts", "tsx", "jsx"))     return { profile: "js/ts",      minMatch: 9  };
+  return { profile: "mixed", minMatch: 9 };
+}
+
+// SHA-256 of the *normalized* token stream for both bundles concatenated.
+// Same normalized input → same hex hash, always. Store this in the evidence
+// record: reproducibility becomes cryptographically verifiable.
+export async function computeEvidenceHash(bundleA: string, bundleB: string): Promise<string> {
+  const fa = parseBundleToFiles(bundleA);
+  const fb = parseBundleToFiles(bundleB);
+  const serialize = (files: FileTokens[]) =>
+    files.map(f => `${f.file}\n${f.tokens.map(t => t.value).join(" ")}`).join("\n---\n");
+  const payload = `A\n${serialize(fa)}\n===\nB\n${serialize(fb)}`;
+  const bytes = new TextEncoder().encode(payload);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 function snippetFor(rawLines: string[], line: number, span = 2): string {
   const start = Math.max(0, line - 1 - span);
   const end = Math.min(rawLines.length, line - 1 + span + 1);
@@ -253,13 +291,18 @@ function snippetFor(rawLines: string[], line: number, span = 2): string {
 export function analyzeStructural(
   bundleA: string,
   bundleB: string,
-  opts: { minMatch?: number; maxPairs?: number; maxMatches?: number } = {},
+  opts: { minMatch?: number | "adaptive"; maxPairs?: number; maxMatches?: number } = {},
 ): StructuralReport {
-  const minMatch = opts.minMatch ?? 9;
   const maxMatches = opts.maxMatches ?? 15;
 
   const filesA = parseBundleToFiles(bundleA);
   const filesB = parseBundleToFiles(bundleB);
+
+  // Adaptive minMatch: derive from language mix across both bundles.
+  const profileInfo = detectLanguageProfile([...filesA, ...filesB]);
+  const minMatch = (opts.minMatch === undefined || opts.minMatch === "adaptive")
+    ? profileInfo.minMatch
+    : opts.minMatch;
 
   let coveredA = 0, coveredB = 0;
   let totalA = 0, totalB = 0;
@@ -320,6 +363,8 @@ export function analyzeStructural(
     coveredTokens: coveredA,
     matches: matches.slice(0, maxMatches),
     filePairs: filePairs.slice(0, 10),
+    minMatchUsed: minMatch,
+    languageProfile: profileInfo.profile,
   };
 }
 
@@ -329,6 +374,7 @@ export function formatEvidenceForLLM(r: StructuralReport): string {
     return `EVIDÊNCIA ESTRUTURAL DETERMINÍSTICA (tokenização + Greedy String Tiling):
 - Similaridade estrutural global: ${r.similarity}%
 - Tokens analisados: A=${r.totalTokensA}, B=${r.totalTokensB}
+- Perfil linguístico: ${r.languageProfile} · minMatch adaptativo: ${r.minMatchUsed} tokens
 - Nenhum bloco de tokens estruturalmente idêntico (≥9 tokens) foi encontrado.`;
   }
 
@@ -336,6 +382,7 @@ export function formatEvidenceForLLM(r: StructuralReport): string {
   lines.push("EVIDÊNCIA ESTRUTURAL DETERMINÍSTICA (tokenização + Greedy String Tiling estilo JPlag):");
   lines.push(`- Similaridade estrutural global: ${r.similarity}% (fórmula 2·cobertura/(|A|+|B|))`);
   lines.push(`- Tokens normalizados: A=${r.totalTokensA}, B=${r.totalTokensB}, cobertos por matches=${r.coveredTokens}`);
+  lines.push(`- Perfil linguístico detectado: ${r.languageProfile} · minMatch adaptativo: ${r.minMatchUsed} tokens`);
   lines.push("- Identificadores e literais foram normalizados; renomear variáveis NÃO afeta o resultado.");
   lines.push("");
   lines.push("PARES DE ARQUIVOS COM MAIOR SIMILARIDADE ESTRUTURAL:");
