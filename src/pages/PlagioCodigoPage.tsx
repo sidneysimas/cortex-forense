@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import {
   Loader2, Copy, Check, Code2, Save, X,
   ShieldAlert, ShieldCheck, ShieldQuestion, FileCode2, AlertCircle,
-  KeyRound, Upload, Link2, FolderOpen
+  KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,11 @@ import { streamForensicAnalysis } from "@/lib/forensic-api";
 import { toast } from "@/hooks/use-toast";
 import { saveEvidence } from "@/lib/audit";
 import CaseSelector from "@/components/dashboard/CaseSelector";
+import {
+  analyzeStructural,
+  formatEvidenceForLLM,
+  type StructuralReport,
+} from "@/lib/structural-plagiarism";
 
 // ── Verdict helpers ───────────────────────────────────────────────────────────
 type Verdict = "CULPADO" | "SUSPEITO" | "NÃO CULPADO" | null;
