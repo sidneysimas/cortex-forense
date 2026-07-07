@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import {
   Loader2, Copy, Check, Code2, Save, X,
   ShieldAlert, ShieldCheck, ShieldQuestion, FileCode2, AlertCircle,
-  KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare
+  KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare, Lock
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import CaseSelector from "@/components/dashboard/CaseSelector";
 import {
   analyzeStructural,
   formatEvidenceForLLM,
+  computeEvidenceHash,
   type StructuralReport,
 } from "@/lib/structural-plagiarism";
 
@@ -142,8 +143,9 @@ const CODE_EXTENSIONS = /\.(py|js|ts|tsx|jsx|java|c|cpp|h|cs|go|rs|php|swift|kt|
 const IGNORE_PATHS    = /node_modules|dist|\.next|build|__pycache__|\.git|vendor|coverage/;
 const MAX_FILES = 30;
 const MAX_DEPTH = 3;
+const MAX_FILE_CHARS = 8000;
 
-async function fetchGitHubRepo(url: string, token?: string): Promise<string> {
+async function fetchGitHubRepo(url: string, token?: string, strict = false): Promise<string> {
   const match = url.trim().replace(/\/$/, "").match(/github\.com\/([^/]+)\/([^/#?]+)/);
   if (!match) throw new Error("URL GitHub inválida. Use: github.com/usuario/repositorio");
   const [, owner, repoRaw] = match;
@@ -167,17 +169,24 @@ async function fetchGitHubRepo(url: string, token?: string): Promise<string> {
     return files;
   };
 
-  const files = (await collect()).slice(0, MAX_FILES);
+  const collected = await collect();
+  if (strict && collected.length > MAX_FILES) {
+    throw new Error(`Modo estrito: repositório GitHub tem ${collected.length} arquivos de código, excede o limite de ${MAX_FILES}. Reduza o escopo ou desligue o modo estrito.`);
+  }
+  const files = collected.slice(0, MAX_FILES);
   if (!files.length) throw new Error("Nenhum arquivo de código encontrado no repositório GitHub.");
   let out = `// ═══ REPOSITÓRIO (GitHub): ${owner}/${repo} — ${files.length} arquivos ═══\n\n`;
   for (const f of files) {
     const txt = await fetch(f.download_url).then(r => r.text()).catch(() => "// [erro ao ler arquivo]");
-    out += `// ── ARQUIVO: ${f.path} ──\n${txt.slice(0, 8000)}\n\n`;
+    if (strict && txt.length > MAX_FILE_CHARS) {
+      throw new Error(`Modo estrito: arquivo "${f.path}" tem ${txt.length} chars, excede ${MAX_FILE_CHARS}. Desligue o modo estrito para permitir truncamento.`);
+    }
+    out += `// ── ARQUIVO: ${f.path} ──\n${txt.slice(0, MAX_FILE_CHARS)}\n\n`;
   }
   return out;
 }
 
-async function fetchGitLabRepo(url: string, token?: string): Promise<string> {
+async function fetchGitLabRepo(url: string, token?: string, strict = false): Promise<string> {
   const clean = url.trim().replace(/\/$/, "").replace(/^https?:\/\//, "");
   const slashIdx = clean.indexOf("/");
   if (slashIdx === -1) throw new Error("URL GitLab inválida. Use: gitlab.com/usuario/repositorio");
@@ -206,26 +215,33 @@ async function fetchGitLabRepo(url: string, token?: string): Promise<string> {
     return files;
   };
 
-  const filePaths = (await collect()).slice(0, MAX_FILES);
+  const collected = await collect();
+  if (strict && collected.length > MAX_FILES) {
+    throw new Error(`Modo estrito: repositório GitLab tem ${collected.length} arquivos de código, excede o limite de ${MAX_FILES}.`);
+  }
+  const filePaths = collected.slice(0, MAX_FILES);
   if (!filePaths.length) throw new Error("Nenhum arquivo de código encontrado no repositório GitLab.");
   let out = `// ═══ REPOSITÓRIO (GitLab): ${pathRaw} — ${filePaths.length} arquivos ═══\n\n`;
   for (const fp of filePaths) {
     const txt = await fetch(`${baseUrl}/repository/files/${encodeURIComponent(fp)}/raw?ref=HEAD`, { headers })
       .then(r => r.text()).catch(() => "// [erro ao ler arquivo]");
-    out += `// ── ARQUIVO: ${fp} ──\n${txt.slice(0, 8000)}\n\n`;
+    if (strict && txt.length > MAX_FILE_CHARS) {
+      throw new Error(`Modo estrito: arquivo "${fp}" tem ${txt.length} chars, excede ${MAX_FILE_CHARS}.`);
+    }
+    out += `// ── ARQUIVO: ${fp} ──\n${txt.slice(0, MAX_FILE_CHARS)}\n\n`;
   }
   return out;
 }
 
-async function fetchRepo(url: string, token?: string): Promise<string> {
+async function fetchRepo(url: string, token?: string, strict = false): Promise<string> {
   const p = detectProvider(url);
-  if (p === "github") return fetchGitHubRepo(url, token);
-  if (p === "gitlab") return fetchGitLabRepo(url, token);
+  if (p === "github") return fetchGitHubRepo(url, token, strict);
+  if (p === "gitlab") return fetchGitLabRepo(url, token, strict);
   throw new Error("URL não reconhecida. Use github.com/... ou gitlab.com/...");
 }
 
 // ── File / ZIP reader ─────────────────────────────────────────────────────────
-async function readFilesAsCode(fileList: FileList | File[]): Promise<{ code: string; count: number }> {
+async function readFilesAsCode(fileList: FileList | File[], strict = false): Promise<{ code: string; count: number }> {
   const files = Array.from(fileList);
   let combined = "";
   let count = 0;
@@ -235,25 +251,39 @@ async function readFilesAsCode(fileList: FileList | File[]): Promise<{ code: str
     // ZIP: extrair com JSZip
     if (file.name.endsWith(".zip")) {
       const zip = await JSZip.loadAsync(file);
-      const entries = Object.entries(zip.files)
-        .filter(([name, entry]) => !entry.dir && CODE_EXTENSIONS.test(name) && !IGNORE_PATHS.test(name))
-        .slice(0, MAX_FILES);
+      const allEntries = Object.entries(zip.files)
+        .filter(([name, entry]) => !entry.dir && CODE_EXTENSIONS.test(name) && !IGNORE_PATHS.test(name));
+      if (strict && allEntries.length > MAX_FILES) {
+        throw new Error(`Modo estrito: ZIP contém ${allEntries.length} arquivos de código, excede ${MAX_FILES}.`);
+      }
+      const entries = allEntries.slice(0, MAX_FILES);
 
       if (!combined) combined = `// ═══ UPLOAD: ${label} — ${entries.length} arquivos ═══\n\n`;
       for (const [name, entry] of entries) {
         const txt = await entry.async("string").catch(() => "// [erro ao ler arquivo]");
-        combined += `// ── ARQUIVO: ${name} ──\n${txt.slice(0, 8000)}\n\n`;
+        if (strict && txt.length > MAX_FILE_CHARS) {
+          throw new Error(`Modo estrito: "${name}" tem ${txt.length} chars, excede ${MAX_FILE_CHARS}.`);
+        }
+        combined += `// ── ARQUIVO: ${name} ──\n${txt.slice(0, MAX_FILE_CHARS)}\n\n`;
         count++;
       }
     } else if (CODE_EXTENSIONS.test(file.name) && !IGNORE_PATHS.test(file.name)) {
       // Arquivo de código individual
       const txt = await file.text().catch(() => "// [erro ao ler arquivo]");
+      if (strict && txt.length > MAX_FILE_CHARS) {
+        throw new Error(`Modo estrito: "${file.name}" tem ${txt.length} chars, excede ${MAX_FILE_CHARS}.`);
+      }
       if (!combined) combined = `// ═══ UPLOAD: ${label} — arquivos ═══\n\n`;
-      combined += `// ── ARQUIVO: ${file.name} ──\n${txt.slice(0, 8000)}\n\n`;
+      combined += `// ── ARQUIVO: ${file.name} ──\n${txt.slice(0, MAX_FILE_CHARS)}\n\n`;
       count++;
     }
 
-    if (count >= MAX_FILES) break;
+    if (count >= MAX_FILES) {
+      if (strict && files.indexOf(file) < files.length - 1) {
+        throw new Error(`Modo estrito: seleção excede ${MAX_FILES} arquivos.`);
+      }
+      break;
+    }
   }
 
   if (!count) throw new Error("Nenhum arquivo de código reconhecido. Envie .py, .js, .ts, .java, etc. ou um .zip.");
@@ -319,6 +349,8 @@ const PlagioCodigoPage = () => {
   const [modeA, setModeA]         = useState<ImportMode>("url");
   const [modeB, setModeB]         = useState<ImportMode>("url");
   const [structural, setStructural] = useState<StructuralReport | null>(null);
+  const [evidenceHash, setEvidenceHash] = useState<string | null>(null);
+  const [strictMode, setStrictMode] = useState(false);
 
   const { verdict, similarity } = parseVerdict(result);
 
@@ -327,7 +359,7 @@ const PlagioCodigoPage = () => {
     if (!url.trim()) { toast({ title: "Informe a URL do repositório", variant: "destructive" }); return; }
     setFetching(side);
     try {
-      const code = await fetchRepo(url, accessToken || undefined);
+      const code = await fetchRepo(url, accessToken || undefined, strictMode);
       const count = (code.match(/\/\/ ── ARQUIVO:/g) || []).length;
       if (side === "A") { setCodeA(code); setFilesA(count); }
       else              { setCodeB(code); setFilesB(count); }
@@ -340,7 +372,7 @@ const PlagioCodigoPage = () => {
   const doUpload = async (side: "A" | "B", fl: FileList) => {
     setFetching(side);
     try {
-      const { code, count } = await readFilesAsCode(fl);
+      const { code, count } = await readFilesAsCode(fl, strictMode);
       if (side === "A") { setCodeA(code); setFilesA(count); }
       else              { setCodeB(code); setFilesB(count); }
       toast({ title: `Arquivos ${side} carregados`, description: `${count} arquivo(s) lido(s).` });
@@ -362,6 +394,7 @@ const PlagioCodigoPage = () => {
     setLoading(true);
     setResult("");
     setStructural(null);
+    setEvidenceHash(null);
 
     const techA = detectTechStack(codeA).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
     const techB = detectTechStack(codeB).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
@@ -370,13 +403,18 @@ const PlagioCodigoPage = () => {
     // Roda no browser, antes do LLM. Alimenta o prompt como evidência
     // objetiva citável — conforme Manifesto Metodológico CortexForense.
     let report: StructuralReport | null = null;
+    let hash: string | null = null;
     try {
-      report = analyzeStructural(codeA, codeB, { minMatch: 9 });
+      report = analyzeStructural(codeA, codeB, { minMatch: "adaptive" });
       setStructural(report);
+      hash = await computeEvidenceHash(codeA, codeB);
+      setEvidenceHash(hash);
     } catch (e) {
       console.warn("Falha na análise estrutural:", e);
     }
-    const evidenceBlock = report ? formatEvidenceForLLM(report) : "";
+    const evidenceBlock = report
+      ? `${formatEvidenceForLLM(report)}\n- Hash SHA-256 da evidência (reprodutibilidade): ${hash ?? "n/d"}`
+      : "";
 
     const prompt = `[PERÍCIA DE PLÁGIO DE SOFTWARE — ANÁLISE FORENSE JUDICIAL]
 
@@ -562,6 +600,18 @@ ${codeB.slice(0, 18000)}`;
                   o comparador lê a <em>forma</em> do código, não os nomes. O resultado alimenta o parecer da LLM
                   como evidência determinística citável linha a linha.
                 </p>
+                <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={strictMode}
+                    onChange={e => setStrictMode(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <Lock className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                    Modo estrito (falhar em vez de truncar)
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -593,6 +643,10 @@ ${codeB.slice(0, 18000)}`;
                       structuralSimilarity: structural?.similarity ?? null,
                       structuralMatches: structural?.matches.slice(0, 10) ?? [],
                       structuralFilePairs: structural?.filePairs ?? [],
+                      minMatchUsed: structural?.minMatchUsed ?? null,
+                      languageProfile: structural?.languageProfile ?? null,
+                      evidenceHash,
+                      strictMode,
                     },
                   });
                   setSaving(false);
@@ -671,6 +725,22 @@ ${codeB.slice(0, 18000)}`;
                 Tokenização normaliza identificadores e literais — renomear variáveis <strong className="text-white/50">não</strong> afeta este número.
                 Reproduzível: mesmo input, mesmo resultado.
               </p>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                <div className="text-[10px]">
+                  <p className="text-white/30 uppercase tracking-widest">Perfil / minMatch</p>
+                  <p className="text-white/60 font-mono">
+                    {structural.languageProfile} · {structural.minMatchUsed} tokens
+                  </p>
+                </div>
+                <div className="text-[10px]">
+                  <p className="text-white/30 uppercase tracking-widest flex items-center gap-1">
+                    <Lock className="h-2.5 w-2.5" /> SHA-256 evidência
+                  </p>
+                  <p className="text-white/60 font-mono truncate" title={evidenceHash ?? ""}>
+                    {evidenceHash ? evidenceHash.slice(0, 24) + "…" : "—"}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
