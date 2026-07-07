@@ -401,6 +401,7 @@ const PlagioCodigoPage = () => {
     setResult("");
     setStructural(null);
     setEvidenceHash(null);
+    setSavedEvidenceId(null);
 
     const techA = detectTechStack(codeA).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
     const techB = detectTechStack(codeB).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
