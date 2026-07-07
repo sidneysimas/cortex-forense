@@ -3,7 +3,8 @@ import JSZip from "jszip";
 import {
   Loader2, Copy, Check, Code2, Save, X,
   ShieldAlert, ShieldCheck, ShieldQuestion, FileCode2, AlertCircle,
-  KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare, Lock
+  KeyRound, Upload, Link2, FolderOpen, Fingerprint, GitCompare, Lock,
+  FileText
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { streamForensicAnalysis } from "@/lib/forensic-api";
 import { toast } from "@/hooks/use-toast";
 import { saveEvidence } from "@/lib/audit";
+import { supabase } from "@/integrations/supabase/client";
 import CaseSelector from "@/components/dashboard/CaseSelector";
 import {
   analyzeStructural,
@@ -352,6 +354,8 @@ const PlagioCodigoPage = () => {
   const [structural, setStructural] = useState<StructuralReport | null>(null);
   const [evidenceHash, setEvidenceHash] = useState<string | null>(null);
   const [strictMode, setStrictMode] = useState(false);
+  const [savedEvidenceId, setSavedEvidenceId] = useState<string | null>(null);
+  const [generatingLaudo, setGeneratingLaudo] = useState(false);
 
   const { verdict, similarity } = parseVerdict(result);
 
@@ -397,6 +401,7 @@ const PlagioCodigoPage = () => {
     setResult("");
     setStructural(null);
     setEvidenceHash(null);
+    setSavedEvidenceId(null);
 
     const techA = detectTechStack(codeA).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
     const techB = detectTechStack(codeB).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
@@ -655,7 +660,7 @@ ${codeB.slice(0, 18000)}`;
               {result && !loading && (
                 <Button variant="ghost" size="sm" onClick={async () => {
                   setSaving(true);
-                  await saveEvidence({
+                  const id = await saveEvidence({
                     module: "plagio-codigo",
                     title: `Perícia de Software: ${(repoUrlB || "Upload B").split("/").pop()}`,
                     inputContent: `Origem A: ${repoUrlA || "Upload"}\nOrigem B: ${repoUrlB || "Upload"}\nVeredito: ${verdict || "—"}\nSimilaridade: ${similarity ?? "—"}%`,
@@ -672,11 +677,34 @@ ${codeB.slice(0, 18000)}`;
                       strictMode,
                     },
                   });
+                  if (id) setSavedEvidenceId(id);
                   setSaving(false);
-                  toast({ title: "Laudo salvo na cadeia de custódia!" });
+                  toast({ title: "Evidência salva na cadeia de custódia!", description: "Agora você pode gerar o laudo pericial em DOCX." });
                 }} disabled={saving} className="text-white/60 hover:text-white hover:bg-white/10 gap-2 h-8 rounded-xl border border-white/5">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5 text-primary" />}
-                  Salvar Laudo
+                  {savedEvidenceId ? "Salvo" : "Salvar Evidência"}
+                </Button>
+              )}
+              {savedEvidenceId && !loading && (
+                <Button variant="ghost" size="sm" onClick={async () => {
+                  setGeneratingLaudo(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("export-laudo-docx", { body: { evidenceId: savedEvidenceId } });
+                    if (error) throw new Error(error.message);
+                    const blob = new Blob([data], { type: "application/msword" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `laudo-plagio-${savedEvidenceId.slice(0, 8)}.doc`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast({ title: "Laudo pericial gerado", description: "Documento DOCX pronto — abra no Word ou LibreOffice." });
+                  } catch (err: any) {
+                    toast({ title: "Erro ao gerar laudo", description: err.message, variant: "destructive" });
+                  } finally { setGeneratingLaudo(false); }
+                }} disabled={generatingLaudo} className="text-white hover:text-white hover:bg-primary/20 gap-2 h-8 rounded-xl border border-primary/40 bg-primary/10">
+                  {generatingLaudo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 text-primary" />}
+                  Gerar Laudo (DOCX)
                 </Button>
               )}
               {result && (
