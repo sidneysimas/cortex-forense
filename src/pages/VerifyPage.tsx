@@ -18,12 +18,10 @@ const VerifyPage = () => {
       return;
     }
     supabase
-      .from("evidences")
-      .select("id, module, title, file_hash, created_at, tsa_timestamp, tsa_token, blockchain_tx, blockchain_network, verification_url")
-      .eq("id", evidenceId)
-      .maybeSingle()
+      .rpc("verify_evidence_public", { _id: evidenceId })
       .then(({ data }) => {
-        if (data) setEvidence(data);
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) setEvidence(row);
         else setNotFound(true);
         setLoading(false);
       });
