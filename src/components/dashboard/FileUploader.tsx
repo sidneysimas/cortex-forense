@@ -52,8 +52,7 @@ const FileUploader = ({
 
       // 2. Upload to Storage
       const fileExt = selectedFile.name.split('.').pop();
-      const storageFileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `evidences/${storageFileName}`;
+      const filePath = `${user.id}/evidences/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('forensic-files')
