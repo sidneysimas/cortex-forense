@@ -216,6 +216,7 @@ Responda sempre em português do Brasil, com linguagem técnica apropriada para 
         model: "openai/gpt-5.5",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
+        max_completion_tokens: 16000,
       }),
     });
 
