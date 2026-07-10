@@ -94,7 +94,7 @@ const QuesitosPage = () => {
       const modeLabel = modes.find(m => m.value === mode)?.label || mode;
       await saveEvidence({
         module: "quesitos",
-        title: `${modeLabel} — ${new Date().toLocaleString("pt-BR")}`,
+        title: `${modeLabel} — ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         inputContent: content,
         resultContent: result,
         caseId: selectedCase !== "none" ? selectedCase : undefined,

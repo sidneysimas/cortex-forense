@@ -80,7 +80,7 @@ const VerifyPage = () => {
               <div className="space-y-3 text-sm">
                 <InfoRow icon={<Globe className="h-4 w-4" />} label="Módulo" value={evidence.module} />
                 <InfoRow icon={<Link2 className="h-4 w-4" />} label="Título" value={evidence.title || "—"} />
-                <InfoRow icon={<Clock className="h-4 w-4" />} label="Data de Registro" value={new Date(evidence.created_at).toLocaleString("pt-BR")} />
+                <InfoRow icon={<Clock className="h-4 w-4" />} label="Data de Registro" value={new Date(evidence.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} />
                 {evidence.file_hash && (
                   <div>
                     <div className="flex items-center gap-2 text-muted-foreground mb-1">

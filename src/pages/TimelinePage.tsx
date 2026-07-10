@@ -87,7 +87,7 @@ const TimelinePage = () => {
   }, [user, filterCase]);
 
   const groupedByDate = events.reduce<Record<string, TimelineEvent[]>>((acc, ev) => {
-    const dateKey = new Date(ev.date).toLocaleDateString("pt-BR");
+    const dateKey = new Date(ev.date).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(ev);
     return acc;
@@ -159,7 +159,7 @@ const TimelinePage = () => {
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">{ev.subtitle}</p>
                           <p className="text-xs text-muted-foreground/60 mt-0.5">
-                            {new Date(ev.date).toLocaleTimeString("pt-BR")}
+                            {new Date(ev.date).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" })}
                           </p>
                         </div>
                         {ev.certified && (

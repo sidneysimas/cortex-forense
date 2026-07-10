@@ -79,7 +79,7 @@ const VersionHistoryPage = () => {
                   <div>
                     <p className="text-sm font-medium text-foreground">{v.change_summary || "Versão registrada"}</p>
                     <div className="flex gap-3 text-xs text-muted-foreground mt-0.5">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(v.created_at).toLocaleString("pt-BR")}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(v.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
                       {v.file_hash && <span className="flex items-center gap-1 font-mono"><Hash className="h-3 w-3" /> {v.file_hash.slice(0, 12)}…</span>}
                     </div>
                   </div>

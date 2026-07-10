@@ -98,8 +98,8 @@ serve(async (req) => {
     const qrDataUri = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&format=png&data=${encodeURIComponent(verificationUrl)}`;
 
     const now = new Date();
-    const dateStr = now.toLocaleDateString("pt-BR");
-    const timeStr = now.toLocaleTimeString("pt-BR");
+    const dateStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    const timeStr = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
     // Generate HTML-based PDF content
     const htmlPdf = `<!DOCTYPE html>
@@ -144,7 +144,7 @@ serve(async (req) => {
     <tr><td>ID da Evidência:</td><td>${evidence.id}</td></tr>
     <tr><td>Módulo:</td><td>${moduleLabels[evidence.module] || evidence.module}</td></tr>
     <tr><td>Título:</td><td>${evidence.title || "—"}</td></tr>
-    <tr><td>Data de Registro:</td><td>${new Date(evidence.created_at).toLocaleString("pt-BR")}</td></tr>
+    <tr><td>Data de Registro:</td><td>${new Date(evidence.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td></tr>
   </table>
 </div>
 

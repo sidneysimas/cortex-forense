@@ -112,7 +112,7 @@ const DashboardHome = () => {
                 <Link key={ev.id} to="/dashboard/evidencias" className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/20 transition-colors">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground truncate">{ev.title || "Sem título"}</p>
-                    <p className="text-xs text-muted-foreground">{ev.module} • {new Date(ev.created_at).toLocaleDateString("pt-BR")}</p>
+                    <p className="text-xs text-muted-foreground">{ev.module} • {new Date(ev.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
                   </div>
                   {(ev.tsa_timestamp || ev.blockchain_tx) && <ShieldCheck className="h-4 w-4 text-green-400 shrink-0" />}
                 </Link>

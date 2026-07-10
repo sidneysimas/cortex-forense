@@ -201,7 +201,7 @@ export async function saveEvidence({
   sendNotification({
     type: "analysis_complete",
     subject: `Evidência registrada: ${title}`,
-    body: `Uma nova evidência digital foi registrada na cadeia de custódia conforme ABNT NBR ISO/IEC 27037:2013.\n\nMódulo: ${module}\nTítulo: ${title}\nHash SHA-256: ${sourceHash}\nAgente: ${user.email}\nData: ${new Date().toLocaleString("pt-BR")}`,
+    body: `Uma nova evidência digital foi registrada na cadeia de custódia conforme ABNT NBR ISO/IEC 27037:2013.\n\nMódulo: ${module}\nTítulo: ${title}\nHash SHA-256: ${sourceHash}\nAgente: ${user.email}\nData: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
     evidenceId: inserted?.id,
     caseId,
   });
