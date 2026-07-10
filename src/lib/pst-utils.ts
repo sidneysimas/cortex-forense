@@ -141,11 +141,11 @@ function findProp(props: Record<string, unknown>, keys: string[]): string {
 function formatDate(props: Record<string, unknown>): string {
   const dateVal = props["MessageDeliveryTime"] || props["ClientSubmitTime"] || props["CreationTime"];
   if (dateVal instanceof Date) {
-    return dateVal.toLocaleString("pt-BR");
+    return dateVal.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
   }
   if (typeof dateVal === "string") {
     try {
-      return new Date(dateVal).toLocaleString("pt-BR");
+      return new Date(dateVal).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
     } catch { /* ignore */ }
   }
   return "";

@@ -242,7 +242,7 @@ const SmtpSettingsPage = () => {
                 <tbody>
                   {notifications.map((n) => (
                     <tr key={n.id} className="border-b border-border/30">
-                      <td className="p-3 text-foreground/80 whitespace-nowrap">{new Date(n.created_at).toLocaleString("pt-BR")}</td>
+                      <td className="p-3 text-foreground/80 whitespace-nowrap">{new Date(n.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td>
                       <td className="p-3 text-foreground">{typeLabels[n.notification_type] || n.notification_type}</td>
                       <td className="p-3 text-foreground max-w-xs truncate">{n.subject}</td>
                       <td className="p-3">

@@ -55,7 +55,7 @@ const AnalyticsPage = () => {
   // Timeline (by day)
   const timelineMap: Record<string, number> = {};
   evidences.forEach((e) => {
-    const day = new Date(e.created_at).toLocaleDateString("pt-BR");
+    const day = new Date(e.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     timelineMap[day] = (timelineMap[day] || 0) + 1;
   });
   const timelineData = Object.entries(timelineMap).map(([date, count]) => ({ date, count }));

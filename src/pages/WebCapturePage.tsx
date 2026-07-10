@@ -123,7 +123,7 @@ Cortex Forense - Módulo de Captura Web v2.0
 ═══════════════════════════════════════════════════
 
 ID DA CAPTURA: ${result.captureId}
-DATA/HORA: ${new Date(result.timestamp).toLocaleString("pt-BR")}
+DATA/HORA: ${new Date(result.timestamp).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
 AGENTE: ${result.metadata.captureAgent}
 
 ───────────────────────────────────────────────────
@@ -166,7 +166,7 @@ ${result.aiAnalysis}
 
 ═══════════════════════════════════════════════════
 FIM DO RELATÓRIO
-Gerado por Cortex Forense em ${new Date().toLocaleString("pt-BR")}
+Gerado por Cortex Forense em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
 ═══════════════════════════════════════════════════
 `.trim();
 
@@ -239,7 +239,7 @@ Gerado por Cortex Forense em ${new Date().toLocaleString("pt-BR")}
                 <span className="text-xs font-medium text-muted-foreground">Data/Hora</span>
               </div>
               <p className="text-sm text-foreground font-mono">
-                {new Date(result.timestamp).toLocaleString("pt-BR")}
+                {new Date(result.timestamp).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
               </p>
             </div>
             <div className="glass-card rounded-xl p-4">

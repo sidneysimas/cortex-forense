@@ -126,7 +126,7 @@ const ShareManagementPage = () => {
                       </span>
                     </div>
                     <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                      <span>Expira: {new Date(link.expires_at).toLocaleString("pt-BR")}</span>
+                      <span>Expira: {new Date(link.expires_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
                       <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {link.view_count}{link.max_views > 0 ? `/${link.max_views}` : ""}</span>
                     </div>
                   </div>

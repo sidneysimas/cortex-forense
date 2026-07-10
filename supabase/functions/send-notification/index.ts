@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     </div>
     <hr style="border: none; border-top: 1px solid #2a3040; margin: 24px 0;">
     <p style="text-align: center; font-size: 11px; color: #666;">
-      Enviado automaticamente por Cortex Forense • ${new Date().toLocaleString("pt-BR")}
+      Enviado automaticamente por Cortex Forense • ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
     </p>
   </div>
 </body>

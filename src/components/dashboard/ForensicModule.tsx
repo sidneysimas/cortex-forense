@@ -92,7 +92,7 @@ const ForensicModule = ({ type, title, subtitle, placeholder, supportsImage = fa
      setSaving(true);
      await saveEvidence({
        module: type,
-       title: `${title} — ${new Date().toLocaleString("pt-BR")}`,
+       title: `${title} — ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
        inputContent: content,
        resultContent: result,
        filePath: filePath || undefined,

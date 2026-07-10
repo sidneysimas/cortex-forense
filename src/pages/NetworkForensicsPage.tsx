@@ -151,7 +151,7 @@ const NetworkForensicsPage = () => {
     await saveEvidence({
       module: "rede",
       title: `Forense de Rede — ${fileName}`,
-      inputContent: `Arquivo: ${fileName}\nTamanho: ${formatBytes(analysis.fileInfo.fileSize)}\nPeríodo: ${new Date(analysis.fileInfo.startTime).toLocaleString("pt-BR")} a ${new Date(analysis.fileInfo.endTime).toLocaleString("pt-BR")}`,
+      inputContent: `Arquivo: ${fileName}\nTamanho: ${formatBytes(analysis.fileInfo.fileSize)}\nPeríodo: ${new Date(analysis.fileInfo.startTime).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} a ${new Date(analysis.fileInfo.endTime).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
       resultContent: iocSummary,
       caseId: selectedCase !== "none" ? selectedCase : undefined,
       metadata: {
@@ -256,7 +256,7 @@ const NetworkForensicsPage = () => {
           {/* File Info */}
           <div className="glass-card rounded-xl p-4 mb-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div><span className="text-muted-foreground">Período:</span><p className="text-foreground">{new Date(analysis.fileInfo.startTime).toLocaleString("pt-BR")} — {new Date(analysis.fileInfo.endTime).toLocaleString("pt-BR")}</p></div>
+              <div><span className="text-muted-foreground">Período:</span><p className="text-foreground">{new Date(analysis.fileInfo.startTime).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} — {new Date(analysis.fileInfo.endTime).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p></div>
               <div><span className="text-muted-foreground">Duração:</span><p className="text-foreground">{formatDuration(analysis.fileInfo.duration)}</p></div>
               <div><span className="text-muted-foreground">Tamanho:</span><p className="text-foreground">{formatBytes(analysis.fileInfo.fileSize)}</p></div>
               <div><span className="text-muted-foreground">Taxa:</span><p className="text-foreground">{analysis.statistics.packetsPerSecond} pkt/s | {formatBytes(analysis.statistics.bytesPerSecond)}/s</p></div>

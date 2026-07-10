@@ -141,7 +141,7 @@ serve(async (req) => {
     const zipFiles: { name: string; content: Uint8Array }[] = [];
 
     // Add case info file
-    const caseInfo = `CASO: ${caseData.title}\nNúmero: ${caseData.case_number || "N/A"}\nVara: ${caseData.court || "N/A"}\nStatus: ${caseData.status}\nDescrição: ${caseData.description || "N/A"}\nCriado em: ${new Date(caseData.created_at).toLocaleString("pt-BR")}\n\nTotal de evidências: ${evidences.length}`;
+    const caseInfo = `CASO: ${caseData.title}\nNúmero: ${caseData.case_number || "N/A"}\nVara: ${caseData.court || "N/A"}\nStatus: ${caseData.status}\nDescrição: ${caseData.description || "N/A"}\nCriado em: ${new Date(caseData.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}\n\nTotal de evidências: ${evidences.length}`;
     zipFiles.push({ name: "caso-info.txt", content: encoder.encode(caseInfo) });
 
     // Add each evidence as a text file
@@ -152,7 +152,7 @@ serve(async (req) => {
         `EVIDÊNCIA #${i + 1}`,
         `Título: ${ev.title || "N/A"}`,
         `Módulo: ${ev.module}`,
-        `Data: ${new Date(ev.created_at).toLocaleString("pt-BR")}`,
+        `Data: ${new Date(ev.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         `Hash SHA-256: ${ev.file_hash || "N/A"}`,
         ev.tsa_timestamp ? `TSA: ${ev.tsa_timestamp}` : "",
         ev.blockchain_tx ? `Blockchain TX: ${ev.blockchain_tx}\nRede: ${ev.blockchain_network}` : "",

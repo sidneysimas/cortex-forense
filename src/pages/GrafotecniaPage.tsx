@@ -181,7 +181,7 @@ const GrafotecniaPage = () => {
 
       await saveEvidence({
         module: "grafotecnia",
-        title: `Grafotecnia — ${new Date().toLocaleString("pt-BR")}`,
+        title: `Grafotecnia — ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         inputContent: content,
         resultContent: result,
         caseId: selectedCase !== "none" ? selectedCase : undefined,

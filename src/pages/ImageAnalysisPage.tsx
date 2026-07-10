@@ -129,7 +129,7 @@ const ImageAnalysisPage = () => {
 
       await saveEvidence({
         module: "analise-imagem",
-        title: `Análise de Imagem (${analysisTypes.find(t => t.value === analysisType)?.label}) — ${new Date().toLocaleString("pt-BR")}`,
+        title: `Análise de Imagem (${analysisTypes.find(t => t.value === analysisType)?.label}) — ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         inputContent: context || "Imagem pericial",
         resultContent: result,
         caseId: selectedCase !== "none" ? selectedCase : undefined,

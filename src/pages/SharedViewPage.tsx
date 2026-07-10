@@ -95,7 +95,7 @@ const SharedViewPage = () => {
           <ShieldCheck className="h-8 w-8 text-primary" />
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground">Cortex Forense — Compartilhamento Seguro</h1>
-            <p className="text-xs text-muted-foreground">Acesso temporário • Expira em {new Date(data.link.expires_at).toLocaleDateString("pt-BR")}</p>
+            <p className="text-xs text-muted-foreground">Acesso temporário • Expira em {new Date(data.link.expires_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
           </div>
         </div>
 
@@ -124,7 +124,7 @@ const SharedViewPage = () => {
               <div className="grid gap-2 text-xs">
                 <div className="flex items-center gap-2">
                   <Clock className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-muted-foreground">{new Date(ev.created_at).toLocaleString("pt-BR")}</span>
+                  <span className="text-muted-foreground">{new Date(ev.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
                 </div>
                 {ev.file_hash && (
                   <div className="flex items-start gap-2">

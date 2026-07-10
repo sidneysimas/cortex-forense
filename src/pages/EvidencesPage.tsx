@@ -165,7 +165,7 @@ const EvidencesPage = () => {
       sendNotification({
         type: "certification_complete",
         subject: `Evidência certificada: ${ev.title}`,
-        body: `A evidência "${ev.title}" (módulo: ${ev.module}) foi certificada com TSA e blockchain conforme ABNT NBR ISO/IEC 27037:2013.\n\nHash: ${ev.file_hash}\nData: ${new Date().toLocaleString("pt-BR")}`,
+        body: `A evidência "${ev.title}" (módulo: ${ev.module}) foi certificada com TSA e blockchain conforme ABNT NBR ISO/IEC 27037:2013.\n\nHash: ${ev.file_hash}\nData: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         evidenceId: ev.id,
         caseId: ev.case_id,
       });
@@ -342,7 +342,7 @@ const EvidencesPage = () => {
             <tbody>
               {filtered.map((ev) => (
                 <tr key={ev.id} className="border-b border-border/30 hover:bg-muted/20">
-                  <td className="p-3 text-foreground/80 whitespace-nowrap">{new Date(ev.created_at).toLocaleString("pt-BR")}</td>
+                  <td className="p-3 text-foreground/80 whitespace-nowrap">{new Date(ev.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td>
                   <td className="p-3 text-foreground">{moduleLabels[ev.module] || ev.module}</td>
                   <td className="p-3 text-foreground max-w-xs truncate">{ev.title || "—"}</td>
                   <td className="p-3 text-muted-foreground text-xs max-w-[120px] truncate">{getCaseTitle(ev.case_id) || "—"}</td>
@@ -413,7 +413,7 @@ const EvidencesPage = () => {
           </DialogHeader>
           {selected && (
             <div className="space-y-4 text-sm">
-              <div><span className="text-muted-foreground font-medium">Data:</span> {new Date(selected.created_at).toLocaleString("pt-BR")}</div>
+              <div><span className="text-muted-foreground font-medium">Data:</span> {new Date(selected.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</div>
               {getCaseTitle(selected.case_id) && (
                 <div><span className="text-muted-foreground font-medium">Caso:</span> {getCaseTitle(selected.case_id)}</div>
               )}
@@ -506,7 +506,7 @@ const EvidencesPage = () => {
                   <div className="space-y-1 max-h-40 overflow-auto">
                     {accessLogs.map((log) => (
                       <div key={log.id} className="flex items-center gap-2 text-[10px] text-muted-foreground py-0.5 border-b border-border/20 last:border-0">
-                        <span className="text-foreground/70 whitespace-nowrap">{new Date(log.created_at).toLocaleString("pt-BR")}</span>
+                        <span className="text-foreground/70 whitespace-nowrap">{new Date(log.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
                         <Badge variant="outline" className="text-[8px] h-4 px-1.5">{actionLabels[log.action] || log.action}</Badge>
                         {log.justification && <span className="truncate">— {log.justification}</span>}
                       </div>

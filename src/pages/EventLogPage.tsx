@@ -165,7 +165,7 @@ const EventLogPage = () => {
     setSaving(true);
     const summary = [
       `Eventos: ${analysis.fileInfo.eventCount}`,
-      `Período: ${new Date(analysis.fileInfo.firstEvent).toLocaleString("pt-BR")} a ${new Date(analysis.fileInfo.lastEvent).toLocaleString("pt-BR")}`,
+      `Período: ${new Date(analysis.fileInfo.firstEvent).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} a ${new Date(analysis.fileInfo.lastEvent).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
       `Event IDs únicos: ${analysis.statistics.uniqueEventIds}`,
       `Canais: ${Object.keys(analysis.iocs.channelDistribution).join(", ")}`,
       `\nEventos de Segurança:`,
@@ -180,7 +180,7 @@ const EventLogPage = () => {
     await saveEvidence({
       module: "event-log",
       title: `Análise Event Log — ${fileName}`,
-      inputContent: `Arquivo: ${fileName}\nTamanho: ${formatBytes(analysis.fileInfo.fileSize)}\nPeríodo: ${new Date(analysis.fileInfo.firstEvent).toLocaleString("pt-BR")} a ${new Date(analysis.fileInfo.lastEvent).toLocaleString("pt-BR")}`,
+      inputContent: `Arquivo: ${fileName}\nTamanho: ${formatBytes(analysis.fileInfo.fileSize)}\nPeríodo: ${new Date(analysis.fileInfo.firstEvent).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} a ${new Date(analysis.fileInfo.lastEvent).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
       resultContent: summary,
       caseId: selectedCase !== "none" ? selectedCase : undefined,
       metadata: {
@@ -316,7 +316,7 @@ const EventLogPage = () => {
           {/* File Info */}
           <div className="glass-card rounded-xl p-4 mb-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div><span className="text-muted-foreground">Período:</span><p className="text-foreground">{new Date(analysis.fileInfo.firstEvent).toLocaleString("pt-BR")} — {new Date(analysis.fileInfo.lastEvent).toLocaleString("pt-BR")}</p></div>
+              <div><span className="text-muted-foreground">Período:</span><p className="text-foreground">{new Date(analysis.fileInfo.firstEvent).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} — {new Date(analysis.fileInfo.lastEvent).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p></div>
               <div><span className="text-muted-foreground">Tamanho:</span><p className="text-foreground">{formatBytes(analysis.fileInfo.fileSize)}</p></div>
               <div><span className="text-muted-foreground">Chunks:</span><p className="text-foreground">{analysis.fileInfo.chunkCount}</p></div>
               <div><span className="text-muted-foreground">Computadores:</span><p className="text-foreground">{analysis.iocs.computerNames.join(", ") || "—"}</p></div>
@@ -464,7 +464,7 @@ const EventLogPage = () => {
                           } ${evt.levelName === "Critical" || evt.levelName === "Error" ? "bg-destructive/5" : ""}`}
                         >
                           <td className="p-2 font-mono text-muted-foreground">{evt.recordId}</td>
-                          <td className="p-2 font-mono text-foreground whitespace-nowrap">{new Date(evt.timestamp).toLocaleString("pt-BR")}</td>
+                          <td className="p-2 font-mono text-foreground whitespace-nowrap">{new Date(evt.timestamp).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td>
                           <td className="p-2 font-mono font-bold text-foreground">{evt.eventId}</td>
                           <td className="p-2">
                             <Badge variant="outline" className={`text-[9px] h-4 px-1 ${levelColor(evt.levelName)}`}>
@@ -493,7 +493,7 @@ const EventLogPage = () => {
                     <div><span className="text-muted-foreground">Computador:</span><p className="text-foreground font-mono">{selectedEvent.computer || "—"}</p></div>
                     <div><span className="text-muted-foreground">Process ID:</span><p className="text-foreground font-mono">{selectedEvent.processId || "—"}</p></div>
                     <div><span className="text-muted-foreground">Thread ID:</span><p className="text-foreground font-mono">{selectedEvent.threadId || "—"}</p></div>
-                    <div><span className="text-muted-foreground">Timestamp:</span><p className="text-foreground">{new Date(selectedEvent.timestamp).toLocaleString("pt-BR")}</p></div>
+                    <div><span className="text-muted-foreground">Timestamp:</span><p className="text-foreground">{new Date(selectedEvent.timestamp).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p></div>
                   </div>
                   <div>
                     <span className="text-xs text-muted-foreground">Dados extraídos:</span>
