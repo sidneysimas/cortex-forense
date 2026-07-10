@@ -91,7 +91,7 @@ serve(async (req) => {
     const peritoReg = profile?.registration_number || "N/A";
     const peritoArea = profile?.area_of_expertise || "N/A";
     const peritoAddress = profile?.address || "N/A";
-    const now = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+    const now = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
 
     const contentBody = textToDocxParagraphs(evidence.result_content || "Sem conteúdo de análise.");
 
