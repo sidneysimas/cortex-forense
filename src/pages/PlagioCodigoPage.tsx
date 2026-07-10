@@ -412,11 +412,21 @@ const PlagioCodigoPage = () => {
     let report: StructuralReport | null = null;
     let hash: string | null = null;
     try {
-      report = analyzeStructural(codeA, codeB, { minMatch: "adaptive" });
+      report = await analyzeStructural(codeA, codeB, {
+        minMatch: "adaptive",
+        onProgress: (d, t) => {
+          // Progresso visível no botão via título da aba (barato, não re-renderiza)
+          if (t > 0 && d % 256 === 0) {
+            document.title = `Analisando ${Math.round((d / t) * 100)}%… · CortexForense`;
+          }
+        },
+      });
+      document.title = "CortexForense";
       setStructural(report);
       hash = await computeEvidenceHash(codeA, codeB);
       setEvidenceHash(hash);
     } catch (e) {
+      document.title = "CortexForense";
       console.warn("Falha na análise estrutural:", e);
     }
     const evidenceBlock = report
