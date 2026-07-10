@@ -150,7 +150,7 @@ serve(async (req) => {
     const originHeader = req.headers.get("origin") || req.headers.get("referer") || "";
     const originClean = originHeader.replace(/\/$/, "").split("/").slice(0, 3).join("/");
     const appUrl = originClean || "https://forense360.cortexbinario.com.br";
-    const verificationUrl = `${appUrl}/verify?id=${evidenceId}`;
+    const verificationUrl = `${appUrl}/verificar?id=${evidenceId}`;
 
     // Update evidence with certification data
     const { error: updateError } = await supabase

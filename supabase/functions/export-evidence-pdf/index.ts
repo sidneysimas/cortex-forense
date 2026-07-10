@@ -104,7 +104,7 @@ serve(async (req) => {
     const originHeader = req.headers.get("origin") || req.headers.get("referer") || "";
     const originClean = originHeader.replace(/\/$/, "").split("/").slice(0, 3).join("/");
     const appUrl = originClean || "https://forense360.cortexbinario.com.br";
-    const verificationUrl = evidence.verification_url || `${appUrl}/verify?id=${evidence.id}`;
+    const verificationUrl = evidence.verification_url || `${appUrl}/verificar?id=${evidence.id}`;
     const qrDataUri = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&format=png&data=${encodeURIComponent(verificationUrl)}`;
 
     const now = new Date();
