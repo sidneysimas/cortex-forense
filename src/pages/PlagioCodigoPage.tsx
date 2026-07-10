@@ -131,6 +131,61 @@ function TechBadges({ code }: { code: string }) {
   );
 }
 
+type BundleFile = { path: string; body: string };
+
+function parseCodeBundle(bundle: string): BundleFile[] {
+  const parts = bundle.split(/\/\/ ── ARQUIVO: (.+?) ──\n/);
+  const files: BundleFile[] = [];
+  for (let i = 1; i < parts.length; i += 2) {
+    files.push({ path: parts[i].trim(), body: parts[i + 1] ?? "" });
+  }
+  return files;
+}
+
+function relevantPathsFromReport(report: StructuralReport | null): Set<string> {
+  const paths = new Set<string>();
+  if (!report) return paths;
+  for (const pair of report.filePairs) {
+    paths.add(pair.a);
+    paths.add(pair.b);
+  }
+  for (const match of report.matches) {
+    paths.add(match.fileA);
+    paths.add(match.fileB);
+  }
+  return paths;
+}
+
+function buildBalancedRepoExcerpt(bundle: string, relevantPaths: Set<string>, maxChars = MAX_PROMPT_REPO_CHARS): string {
+  const files = parseCodeBundle(bundle);
+  if (!files.length) return bundle.slice(0, maxChars);
+
+  const ordered = [
+    ...files.filter((file) => relevantPaths.has(file.path)),
+    ...files.filter((file) => !relevantPaths.has(file.path)),
+  ];
+
+  const headerBudget = 120;
+  const perFileBudget = Math.max(1200, Math.min(MAX_PROMPT_FILE_CHARS, Math.floor(maxChars / Math.max(1, ordered.length)) - headerBudget));
+  let output = "";
+  let included = 0;
+
+  for (const file of ordered) {
+    const remaining = maxChars - output.length;
+    if (remaining <= 500) break;
+    const body = file.body.slice(0, Math.min(perFileBudget, remaining));
+    output += `// ── ARQUIVO: ${file.path} ──\n${body}`;
+    if (file.body.length > body.length) output += `\n// [trecho limitado: ${file.body.length - body.length} caracteres adicionais omitidos]`;
+    output += "\n\n";
+    included++;
+  }
+
+  if (included < files.length) {
+    output += `// [${files.length - included} arquivo(s) não incluído(s) no prompt por limite de contexto; priorizados arquivos com maior similaridade estrutural.]`;
+  }
+  return output.trim();
+}
+
 // ── Provider detection ────────────────────────────────────────────────────────
 type Provider = "github" | "gitlab" | null;
 function detectProvider(url: string): Provider {
@@ -146,6 +201,8 @@ const IGNORE_PATHS    = /node_modules|dist|\.next|build|__pycache__|\.git|vendor
 const MAX_FILES = Number.POSITIVE_INFINITY;
 const MAX_DEPTH = 8;
 const MAX_FILE_CHARS = 8000;
+const MAX_PROMPT_REPO_CHARS = 52000;
+const MAX_PROMPT_FILE_CHARS = 12000;
 
 async function fetchGitHubRepo(url: string, token?: string, strict = false): Promise<string> {
   const match = url.trim().replace(/\/$/, "").match(/github\.com\/([^/]+)\/([^/#?]+)/);
