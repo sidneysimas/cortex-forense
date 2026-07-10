@@ -509,6 +509,9 @@ const PlagioCodigoPage = () => {
     const evidenceBlock = report
       ? `${formatEvidenceForLLM(report)}\n- Hash SHA-256 da evidência (reprodutibilidade): ${hash ?? "n/d"}`
       : "";
+    const relevantPaths = relevantPathsFromReport(report);
+    const codeExcerptA = buildBalancedRepoExcerpt(codeA, relevantPaths);
+    const codeExcerptB = buildBalancedRepoExcerpt(codeB, relevantPaths);
 
     const prompt = `[PERÍCIA DE PLÁGIO DE SOFTWARE — ANÁLISE FORENSE JUDICIAL]
 
@@ -525,7 +528,10 @@ INSTRUÇÕES OBRIGATÓRIAS:
 4. Compare LÓGICA ALGORÍTMICA — detecte plágio cross-language (ex: Python traduzido para JS, Java reescrito em C#).
 5. Identifique ofuscação deliberada (renomeação de variáveis, inversão de condições, reordenação de blocos).
 6. Analise TECNOLOGIAS em uso: frameworks, bibliotecas, padrões arquiteturais — compare entre A e B.
-7. Use a EVIDÊNCIA ESTRUTURAL abaixo como base objetiva do parecer — cite os pares de arquivos e linhas
+7. A análise deve ser SIMÉTRICA: descreva o Repositório B com o mesmo nível de detalhe do Repositório A.
+8. Antes da conclusão, inclua obrigatoriamente uma subseção "Inventário técnico do Repositório B" com arquivos, tecnologias, padrões e achados relevantes do B.
+9. Não finalize a resposta enquanto a seção do Repositório B e os pares A↔B não estiverem completos.
+10. Use a EVIDÊNCIA ESTRUTURAL abaixo como base objetiva do parecer — cite os pares de arquivos e linhas
    identificados; a similaridade estrutural determinística tem precedência sobre a impressão textual.
    A tokenização já ignora nomes de variáveis, então blocos idênticos ali comprovam correspondência
    estrutural independentemente de renomeação.
@@ -533,10 +539,10 @@ INSTRUÇÕES OBRIGATÓRIAS:
 ${evidenceBlock}
 
 CÓDIGO A (${filesA} arquivos — tecnologias: ${techA}):
-${codeA.slice(0, 18000)}
+${codeExcerptA}
 
 CÓDIGO B (${filesB} arquivos — tecnologias: ${techB}):
-${codeB.slice(0, 18000)}`;
+${codeExcerptB}`;
 
     await streamForensicAnalysis({
       type: "plagio-codigo",
