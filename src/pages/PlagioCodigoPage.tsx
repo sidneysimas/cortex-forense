@@ -16,11 +16,11 @@ import { saveEvidence } from "@/lib/audit";
 import { supabase } from "@/integrations/supabase/client";
 import CaseSelector from "@/components/dashboard/CaseSelector";
 import {
-  analyzeStructural,
   formatEvidenceForLLM,
-  computeEvidenceHash,
   type StructuralReport,
 } from "@/lib/structural-plagiarism";
+import PlagiarismWorker from "@/workers/plagiarism-worker.ts?worker";
+import type { WorkerResponse } from "@/workers/plagiarism-worker";
 
 // ── Verdict helpers ───────────────────────────────────────────────────────────
 type Verdict = "CULPADO" | "SUSPEITO" | "NÃO CULPADO" | null;
