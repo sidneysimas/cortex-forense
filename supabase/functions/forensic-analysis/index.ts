@@ -176,7 +176,7 @@ Responda sempre em português do Brasil, com linguagem técnica e imparcial apro
 Responda sempre em português do Brasil, com linguagem técnica apropriada para laudo pericial. Estruture o parecer em seções claras com numeração.`;
         break;
 
-
+      default:
         return new Response(JSON.stringify({ error: "Tipo de análise não reconhecido" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
