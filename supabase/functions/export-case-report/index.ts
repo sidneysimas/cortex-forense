@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
           <tr><td style="color:#666; padding:4px 0;">${l.hash}:</td><td style="font-family:monospace; font-size:10px; word-break:break-all;">${ev.file_hash || "—"}</td></tr>
           <tr><td style="color:#666; padding:4px 0;">Status:</td><td>${(ev.tsa_timestamp || ev.blockchain_tx) ? `✅ ${l.certified}` : `⏳ ${l.pending}`}</td></tr>
         </table>
-        ${ev.result_content ? `<div style="margin-top:12px;"><strong style="font-size:11px; color:#666;">${l.result}:</strong><pre style="background:#f5f5f5; padding:12px; border-radius:6px; font-size:11px; white-space:pre-wrap; max-height:300px; overflow:auto;">${ev.result_content.replace(/</g, "&lt;")}</pre></div>` : ""}
+        ${ev.result_content ? `<div style="margin-top:12px;"><strong style="font-size:11px; color:#666;">${l.result}:</strong><pre style="background:#f5f5f5; padding:12px; border-radius:6px; font-size:11px; white-space:pre-wrap; word-break:break-word; overflow:visible;">${ev.result_content.replace(/</g, "&lt;")}</pre></div>` : ""}
       </div>
     `).join("");
 
