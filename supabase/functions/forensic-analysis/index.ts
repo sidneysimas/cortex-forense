@@ -130,15 +130,23 @@ Após o cabeçalho obrigatório, produza o parecer técnico nas seguintes seçõ
    - Nível de similaridade do par
    - Trecho representativo com explicação
 
-5. ANÁLISE DE ESTILO E PADRÕES
+5. INVENTÁRIO TÉCNICO DO REPOSITÓRIO B
+   - Liste os arquivos e módulos relevantes do Repositório B examinados
+   - Descreva tecnologias, bibliotecas, padrões arquiteturais e responsabilidades identificadas em B
+   - Aponte achados próprios do B antes de compará-los com A
+   - Esta seção é obrigatória e deve ter profundidade equivalente à descrição do Repositório A
+
+6. ANÁLISE DE ESTILO E PADRÕES
    - Convenções de nomenclatura
    - Comentários e docstrings
    - Estrutura de diretórios e organização
 
-6. CONCLUSÃO TÉCNICA FUNDAMENTADA
+7. CONCLUSÃO TÉCNICA FUNDAMENTADA
    - Síntese das evidências
    - Grau de certeza da conclusão
    - Recomendações para o processo
+
+Regra de completude: não encerre o parecer sem examinar explicitamente o Repositório B e os pares A↔B relevantes. Se houver limite de contexto, priorize os arquivos de B com maior similaridade estrutural e declare objetivamente o escopo analisado.
 
 Responda sempre em português do Brasil, com linguagem técnica e imparcial apropriada para laudo pericial judicial.`;
         break;
@@ -216,7 +224,7 @@ Responda sempre em português do Brasil, com linguagem técnica apropriada para 
         model: "openai/gpt-5.5",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
-        max_completion_tokens: 16000,
+        max_completion_tokens: 32000,
       }),
     });
 
