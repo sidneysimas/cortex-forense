@@ -146,8 +146,11 @@ serve(async (req) => {
       anchorBlockchain(hash),
     ]);
 
-    // Generate verification URL
-    const verificationUrl = `https://cortexforense.app/verify/${evidenceId}`;
+    // Generate verification URL (use request origin for correct domain)
+    const originHeader = req.headers.get("origin") || req.headers.get("referer") || "";
+    const originClean = originHeader.replace(/\/$/, "").split("/").slice(0, 3).join("/");
+    const appUrl = originClean || "https://forense360.cortexbinario.com.br";
+    const verificationUrl = `${appUrl}/verify?id=${evidenceId}`;
 
     // Update evidence with certification data
     const { error: updateError } = await supabase
