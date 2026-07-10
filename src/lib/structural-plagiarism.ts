@@ -288,11 +288,17 @@ function snippetFor(rawLines: string[], line: number, span = 2): string {
 
 // Full report: parses both bundles, compares each file in A against each in B,
 // aggregates the top matches. Bounded to keep browser time reasonable.
-export function analyzeStructural(
+export async function analyzeStructural(
   bundleA: string,
   bundleB: string,
-  opts: { minMatch?: number | "adaptive"; maxPairs?: number; maxMatches?: number } = {},
-): StructuralReport {
+  opts: {
+    minMatch?: number | "adaptive";
+    maxPairs?: number;
+    maxMatches?: number;
+    onProgress?: (done: number, total: number) => void;
+    signal?: AbortSignal;
+  } = {},
+): Promise<StructuralReport> {
   const maxMatches = opts.maxMatches ?? 15;
 
   const filesA = parseBundleToFiles(bundleA);
@@ -312,8 +318,21 @@ export function analyzeStructural(
   const matches: StructuralMatch[] = [];
   const filePairs: StructuralReport["filePairs"] = [];
 
+  const totalPairs = filesA.length * filesB.length;
+  let done = 0;
+  // Yield to the browser every N pairs so the tab stays responsive on huge
+  // repos (1000+ files → millions of pair-token comparisons).
+  const YIELD_EVERY = 32;
+  const yieldToUI = () => new Promise<void>(r => setTimeout(r, 0));
+
   for (const fa of filesA) {
     for (const fb of filesB) {
+      if (opts.signal?.aborted) throw new Error("Análise cancelada");
+      done++;
+      if (done % YIELD_EVERY === 0) {
+        opts.onProgress?.(done, totalPairs);
+        await yieldToUI();
+      }
       // Cheap guard: skip trivially small pairs
       if (fa.tokens.length < minMatch || fb.tokens.length < minMatch) continue;
       const tiles = greedyStringTiling(fa.tokens, fb.tokens, minMatch);
@@ -347,6 +366,7 @@ export function analyzeStructural(
       });
     }
   }
+  opts.onProgress?.(totalPairs, totalPairs);
 
   matches.sort((x, y) => y.length - x.length);
   filePairs.sort((x, y) => y.similarity - x.similarity);
