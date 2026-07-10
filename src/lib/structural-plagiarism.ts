@@ -299,7 +299,7 @@ export async function analyzeStructural(
     signal?: AbortSignal;
   } = {},
 ): Promise<StructuralReport> {
-  const maxMatches = opts.maxMatches ?? 15;
+  const maxMatches = opts.maxMatches ?? 40;
 
   const filesA = parseBundleToFiles(bundleA);
   const filesB = parseBundleToFiles(bundleB);
@@ -387,7 +387,7 @@ export async function analyzeStructural(
     totalTokensB: totalB,
     coveredTokens: coveredA,
     matches: matches.slice(0, maxMatches),
-    filePairs: filePairs.slice(0, 10),
+    filePairs: filePairs.slice(0, 40),
     minMatchUsed: minMatch,
     languageProfile: profileInfo.profile,
   };
@@ -400,7 +400,7 @@ export function formatEvidenceForLLM(r: StructuralReport): string {
 - Similaridade estrutural global: ${r.similarity}%
 - Tokens analisados: A=${r.totalTokensA}, B=${r.totalTokensB}
 - Perfil linguístico: ${r.languageProfile} · minMatch adaptativo: ${r.minMatchUsed} tokens
-- Nenhum bloco de tokens estruturalmente idêntico (≥9 tokens) foi encontrado.`;
+- Nenhum bloco de tokens estruturalmente idêntico (≥${r.minMatchUsed} tokens) foi encontrado.`;
   }
 
   const lines: string[] = [];
@@ -411,12 +411,12 @@ export function formatEvidenceForLLM(r: StructuralReport): string {
   lines.push("- Identificadores e literais foram normalizados; renomear variáveis NÃO afeta o resultado.");
   lines.push("");
   lines.push("PARES DE ARQUIVOS COM MAIOR SIMILARIDADE ESTRUTURAL:");
-  for (const p of r.filePairs.slice(0, 5)) {
+  for (const p of r.filePairs.slice(0, 20)) {
     lines.push(`  • ${p.a}  ↔  ${p.b}  —  ${p.similarity}% (${p.matchedTokens} tokens)`);
   }
   lines.push("");
   lines.push("BLOCOS ESTRUTURALMENTE IDÊNTICOS (cite estes trechos no parecer):");
-  for (let i = 0; i < Math.min(r.matches.length, 8); i++) {
+  for (let i = 0; i < Math.min(r.matches.length, 20); i++) {
     const m = r.matches[i];
     lines.push(`\n[Match #${i + 1}] ${m.length} tokens idênticos`);
     lines.push(`  A: ${m.fileA}  linhas ${m.linesA[0]}–${m.linesA[1]}`);
