@@ -28,6 +28,7 @@ interface Evidence {
   result_content: string;
   file_hash: string;
   created_at: string;
+  created_at_brt?: string;
   case_id?: string;
   tsa_timestamp?: string;
   tsa_token?: string;
@@ -44,8 +45,12 @@ interface AccessLog {
   user_agent: string;
   justification: string | null;
   created_at: string;
+  created_at_brt?: string;
   user_id: string;
 }
+
+const formatBrt = (date?: string | null, brt?: string | null) =>
+  brt || (date ? `${new Date(date).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (BRT)` : "—");
 
 const moduleLabels: Record<string, string> = {
   grafotecnia: "Grafotecnia",
@@ -342,7 +347,7 @@ const EvidencesPage = () => {
             <tbody>
               {filtered.map((ev) => (
                 <tr key={ev.id} className="border-b border-border/30 hover:bg-muted/20">
-                  <td className="p-3 text-foreground/80 whitespace-nowrap">{new Date(ev.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td>
+                  <td className="p-3 text-foreground/80 whitespace-nowrap">{formatBrt(ev.created_at, ev.created_at_brt)}</td>
                   <td className="p-3 text-foreground">{moduleLabels[ev.module] || ev.module}</td>
                   <td className="p-3 text-foreground max-w-xs truncate">{ev.title || "—"}</td>
                   <td className="p-3 text-muted-foreground text-xs max-w-[120px] truncate">{getCaseTitle(ev.case_id) || "—"}</td>
@@ -413,7 +418,7 @@ const EvidencesPage = () => {
           </DialogHeader>
           {selected && (
             <div className="space-y-4 text-sm">
-              <div><span className="text-muted-foreground font-medium">Data:</span> {new Date(selected.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</div>
+              <div><span className="text-muted-foreground font-medium">Data:</span> {formatBrt(selected.created_at, selected.created_at_brt)}</div>
               {getCaseTitle(selected.case_id) && (
                 <div><span className="text-muted-foreground font-medium">Caso:</span> {getCaseTitle(selected.case_id)}</div>
               )}
@@ -444,6 +449,10 @@ const EvidencesPage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
+                      <span className="text-muted-foreground">Aquisição:</span>
+                      <p className="text-foreground/80">{selected.metadata.iso27037.acquisition?.timestampBR || formatBrt(selected.created_at, selected.created_at_brt)}</p>
+                    </div>
+                    <div>
                       <span className="text-muted-foreground">Agente:</span>
                       <p className="text-foreground/80">{selected.metadata.iso27037.acquisition?.agent || "—"}</p>
                     </div>
@@ -458,6 +467,10 @@ const EvidencesPage = () => {
                     <div>
                       <span className="text-muted-foreground">Preservação:</span>
                       <p className="text-foreground/80">{selected.metadata.iso27037.chainOfCustody?.preservationMethod || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Fuso:</span>
+                      <p className="text-foreground/80">{selected.metadata.iso27037.chainOfCustody?.timezone || "America/Sao_Paulo"}</p>
                     </div>
                   </div>
                   {selected.metadata.iso27037.acquisition?.device && (
@@ -506,7 +519,7 @@ const EvidencesPage = () => {
                   <div className="space-y-1 max-h-40 overflow-auto">
                     {accessLogs.map((log) => (
                       <div key={log.id} className="flex items-center gap-2 text-[10px] text-muted-foreground py-0.5 border-b border-border/20 last:border-0">
-                        <span className="text-foreground/70 whitespace-nowrap">{new Date(log.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
+                        <span className="text-foreground/70 whitespace-nowrap">{formatBrt(log.created_at, log.created_at_brt)}</span>
                         <Badge variant="outline" className="text-[8px] h-4 px-1.5">{actionLabels[log.action] || log.action}</Badge>
                         {log.justification && <span className="truncate">— {log.justification}</span>}
                       </div>

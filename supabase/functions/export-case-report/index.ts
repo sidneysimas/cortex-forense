@@ -5,6 +5,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function formatBrt(date?: string | null, brt?: string | null, locale = "pt-BR"): string {
+  if (brt) return brt;
+  if (!date) return "—";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return `${parsed.toLocaleString(locale, { timeZone: "America/Sao_Paulo" })} (BRT)`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -50,7 +58,7 @@ Deno.serve(async (req) => {
         <h3 style="margin:0 0 8px; color:#333;">${i + 1}. ${ev.title || "—"}</h3>
         <table style="width:100%; font-size:12px; border-collapse:collapse;">
           <tr><td style="width:120px; color:#666; padding:4px 0;">${l.module}:</td><td>${ml[ev.module] || ev.module}</td></tr>
-          <tr><td style="color:#666; padding:4px 0;">${l.date}:</td><td>${new Date(ev.created_at).toLocaleString(lang === "en" ? "en-US" : lang === "es" ? "es-ES" : "pt-BR", { timeZone: "America/Sao_Paulo" })} (BRT)</td></tr>
+          <tr><td style="color:#666; padding:4px 0;">${l.date}:</td><td>${formatBrt(ev.created_at, ev.created_at_brt || ev.metadata?.iso27037?.chainOfCustody?.acquisitionTimeBR, lang === "en" ? "en-US" : lang === "es" ? "es-ES" : "pt-BR")}</td></tr>
           <tr><td style="color:#666; padding:4px 0;">${l.hash}:</td><td style="font-family:monospace; font-size:10px; word-break:break-all;">${ev.file_hash || "—"}</td></tr>
           <tr><td style="color:#666; padding:4px 0;">Status:</td><td>${(ev.tsa_timestamp || ev.blockchain_tx) ? `✅ ${l.certified}` : `⏳ ${l.pending}`}</td></tr>
         </table>

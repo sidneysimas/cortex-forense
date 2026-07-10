@@ -28,6 +28,24 @@ async function getWhoisInfo(hostname: string) {
   return null;
 }
 
+function formatBrasiliaIsoOffset(date: Date): string {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date).reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== "literal") acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}-03:00`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -54,11 +72,7 @@ serve(async (req) => {
 
      const now = new Date();
      const captureTimestamp = now.toISOString();
-     
-     // Format Brasilia Time (UTC-3)
-     const brOffset = -3 * 60 * 60 * 1000;
-     const brTime = new Date(now.getTime() + brOffset); // Simple offset for function logs
-     const brTimestamp = brTime.toISOString().replace('Z', '-03:00');
+     const brTimestamp = formatBrasiliaIsoOffset(now);
     const hostname = parsedUrl.hostname;
 
     // Parallel: DNS + WHOIS + Page fetch + Screenshot

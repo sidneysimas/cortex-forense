@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function formatBrt(date?: string | null, brt?: string | null): string {
+  if (brt) return brt;
+  if (!date) return "—";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return `${parsed.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (BRT)`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -100,6 +108,7 @@ serve(async (req) => {
     const now = new Date();
     const dateStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     const timeStr = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    const evidenceCreatedAtBrt = formatBrt(evidence.created_at, evidence.created_at_brt || evidence.metadata?.iso27037?.chainOfCustody?.acquisitionTimeBR);
 
     // Generate HTML-based PDF content
     const htmlPdf = `<!DOCTYPE html>
@@ -144,7 +153,7 @@ serve(async (req) => {
     <tr><td>ID da Evidência:</td><td>${evidence.id}</td></tr>
     <tr><td>Módulo:</td><td>${moduleLabels[evidence.module] || evidence.module}</td></tr>
     <tr><td>Título:</td><td>${evidence.title || "—"}</td></tr>
-    <tr><td>Data de Registro:</td><td>${new Date(evidence.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td></tr>
+    <tr><td>Data de Registro:</td><td>${evidenceCreatedAtBrt}</td></tr>
   </table>
 </div>
 
@@ -163,7 +172,7 @@ serve(async (req) => {
   <div class="field"><span class="field-label">Hash SHA-256:</span></div>
   <div class="hash-box">${evidence.file_hash || "N/A"}</div>
   ${evidence.tsa_timestamp ? `
-  <div class="field" style="margin-top: 8px;"><span class="field-label">Carimbo de Tempo (TSA):</span> ${evidence.tsa_timestamp}</div>
+  <div class="field" style="margin-top: 8px;"><span class="field-label">Carimbo de Tempo (TSA):</span> ${formatBrt(evidence.tsa_timestamp)}</div>
   ` : ""}
   ${evidence.blockchain_tx ? `
   <div class="field"><span class="field-label">Ancoragem Blockchain:</span> ${evidence.blockchain_tx}</div>

@@ -6,6 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function formatBrt(date?: string | null, brt?: string | null): string {
+  if (brt) return brt;
+  if (!date) return "—";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return `${parsed.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (BRT)`;
+}
+
 // Minimal ZIP creation without external deps
 function createZip(files: { name: string; content: Uint8Array }[]): Uint8Array {
   const entries: { header: Uint8Array; data: Uint8Array; centralHeader: Uint8Array; offset: number }[] = [];
@@ -141,7 +149,7 @@ serve(async (req) => {
     const zipFiles: { name: string; content: Uint8Array }[] = [];
 
     // Add case info file
-    const caseInfo = `CASO: ${caseData.title}\nNúmero: ${caseData.case_number || "N/A"}\nVara: ${caseData.court || "N/A"}\nStatus: ${caseData.status}\nDescrição: ${caseData.description || "N/A"}\nCriado em: ${new Date(caseData.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}\n\nTotal de evidências: ${evidences.length}`;
+    const caseInfo = `CASO: ${caseData.title}\nNúmero: ${caseData.case_number || "N/A"}\nVara: ${caseData.court || "N/A"}\nStatus: ${caseData.status}\nDescrição: ${caseData.description || "N/A"}\nCriado em: ${formatBrt(caseData.created_at, caseData.created_at_brt)}\n\nTotal de evidências: ${evidences.length}`;
     zipFiles.push({ name: "caso-info.txt", content: encoder.encode(caseInfo) });
 
     // Add each evidence as a text file
@@ -152,9 +160,9 @@ serve(async (req) => {
         `EVIDÊNCIA #${i + 1}`,
         `Título: ${ev.title || "N/A"}`,
         `Módulo: ${ev.module}`,
-        `Data: ${new Date(ev.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
+        `Data: ${formatBrt(ev.created_at, ev.created_at_brt || ev.metadata?.iso27037?.chainOfCustody?.acquisitionTimeBR)}`,
         `Hash SHA-256: ${ev.file_hash || "N/A"}`,
-        ev.tsa_timestamp ? `TSA: ${ev.tsa_timestamp}` : "",
+        ev.tsa_timestamp ? `TSA: ${formatBrt(ev.tsa_timestamp)}` : "",
         ev.blockchain_tx ? `Blockchain TX: ${ev.blockchain_tx}\nRede: ${ev.blockchain_network}` : "",
         `\n--- ENTRADA ---\n${ev.input_content || "N/A"}`,
         `\n--- RESULTADO ---\n${ev.result_content || "N/A"}`,

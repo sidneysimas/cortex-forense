@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           action: string
           created_at: string
+          created_at_brt: string
           details: Json | null
           id: string
           ip_address: string | null
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           action: string
           created_at?: string
+          created_at_brt?: string
           details?: Json | null
           id?: string
           ip_address?: string | null
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           action?: string
           created_at?: string
+          created_at_brt?: string
           details?: Json | null
           id?: string
           ip_address?: string | null
@@ -106,6 +109,7 @@ export type Database = {
         Row: {
           action: string
           created_at: string
+          created_at_brt: string
           evidence_id: string
           id: string
           ip_address: string | null
@@ -116,6 +120,7 @@ export type Database = {
         Insert: {
           action?: string
           created_at?: string
+          created_at_brt?: string
           evidence_id: string
           id?: string
           ip_address?: string | null
@@ -126,6 +131,7 @@ export type Database = {
         Update: {
           action?: string
           created_at?: string
+          created_at_brt?: string
           evidence_id?: string
           id?: string
           ip_address?: string | null
@@ -147,6 +153,7 @@ export type Database = {
         Row: {
           change_summary: string | null
           created_at: string
+          created_at_brt: string
           evidence_id: string
           file_hash: string | null
           file_path: string | null
@@ -161,6 +168,7 @@ export type Database = {
         Insert: {
           change_summary?: string | null
           created_at?: string
+          created_at_brt?: string
           evidence_id: string
           file_hash?: string | null
           file_path?: string | null
@@ -175,6 +183,7 @@ export type Database = {
         Update: {
           change_summary?: string | null
           created_at?: string
+          created_at_brt?: string
           evidence_id?: string
           file_hash?: string | null
           file_path?: string | null
@@ -202,6 +211,7 @@ export type Database = {
           blockchain_tx: string | null
           case_id: string | null
           created_at: string
+          created_at_brt: string
           file_hash: string | null
           file_path: string | null
           id: string
@@ -221,6 +231,7 @@ export type Database = {
           blockchain_tx?: string | null
           case_id?: string | null
           created_at?: string
+          created_at_brt?: string
           file_hash?: string | null
           file_path?: string | null
           id?: string
@@ -240,6 +251,7 @@ export type Database = {
           blockchain_tx?: string | null
           case_id?: string | null
           created_at?: string
+          created_at_brt?: string
           file_hash?: string | null
           file_path?: string | null
           id?: string
@@ -574,6 +586,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_brasilia_custody_metadata: {
+        Args: { _created_at: string; _metadata: Json }
+        Returns: Json
+      }
+      format_brasilia_timestamp: { Args: { _ts: string }; Returns: string }
       get_shared_link_bundle: {
         Args: { _password?: string; _token: string }
         Returns: Json
