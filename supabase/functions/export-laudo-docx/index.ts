@@ -10,6 +10,14 @@ function escapeXml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function formatBrt(date?: string | null, brt?: string | null): string {
+  if (brt) return brt;
+  if (!date) return "—";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return `${parsed.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (BRT)`;
+}
+
 function textToDocxParagraphs(text: string): string {
   return text.split("\n").map(line => {
     const trimmed = line.trim();
@@ -125,9 +133,9 @@ serve(async (req) => {
     <w:p><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>3. OBJETO DA PERÍCIA</w:t></w:r></w:p>
     <w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Título: ${escapeXml(evidence.title || "N/A")}</w:t></w:r></w:p>
     <w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Módulo: ${escapeXml(evidence.module)}</w:t></w:r></w:p>
-    <w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Data do Registro: ${escapeXml(new Date(evidence.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }))}</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Data do Registro: ${escapeXml(formatBrt(evidence.created_at, evidence.created_at_brt || evidence.metadata?.iso27037?.chainOfCustody?.acquisitionTimeBR))}</w:t></w:r></w:p>
     ${evidence.file_hash ? `<w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Hash de Integridade (SHA-256): ${escapeXml(evidence.file_hash)}</w:t></w:r></w:p>` : ""}
-    ${evidence.tsa_timestamp ? `<w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Carimbo de Tempo (TSA): ${escapeXml(evidence.tsa_timestamp)}</w:t></w:r></w:p>` : ""}
+    ${evidence.tsa_timestamp ? `<w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Carimbo de Tempo (TSA): ${escapeXml(formatBrt(evidence.tsa_timestamp))}</w:t></w:r></w:p>` : ""}
     ${evidence.blockchain_tx ? `<w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve">Registro Blockchain: ${escapeXml(evidence.blockchain_tx)}</w:t></w:r></w:p>` : ""}
     <w:p/>
 

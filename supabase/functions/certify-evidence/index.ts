@@ -6,6 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function formatBrasiliaTimestamp(date: Date): string {
+  return date.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) + " (BRT)";
+}
+
 async function getTsaTimestamp(hash: string): Promise<{ timestamp: string; token: string }> {
   // RFC 3161 TSA request to FreeTSA
   // We send the hash and get back a signed timestamp
@@ -46,7 +50,7 @@ async function getTsaTimestamp(hash: string): Promise<{ timestamp: string; token
       // Convert to base64 as our "token"
       const token = btoa(String.fromCharCode(...tsrArray));
       return {
-        timestamp: new Date().toISOString(),
+        timestamp: formatBrasiliaTimestamp(new Date()),
         token: token.slice(0, 500), // Store truncated for DB
       };
     }
@@ -56,7 +60,7 @@ async function getTsaTimestamp(hash: string): Promise<{ timestamp: string; token
 
   // Fallback: self-signed timestamp
   return {
-    timestamp: new Date().toISOString(),
+    timestamp: formatBrasiliaTimestamp(new Date()),
     token: `CORTEX-TS-${Date.now()}-${hash.slice(0, 16)}`,
   };
 }

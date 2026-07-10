@@ -8,9 +8,6 @@ import { sendNotification } from "@/lib/notifications";
 
 function getDeviceInfo() {
    const now = new Date();
-   // Brasília is UTC-3
-   const brOffset = -3 * 60 * 60 * 1000;
-   const brTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + brOffset);
    
    return {
      userAgent: navigator.userAgent,
@@ -19,7 +16,7 @@ function getDeviceInfo() {
      screenResolution: `${screen.width}x${screen.height}`,
      timezone: "America/Sao_Paulo",
      timestamp: now.toISOString(),
-     timestampBR: brTime.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) + " (BRT)",
+      timestampBR: now.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) + " (BRT)",
      vendor: (navigator as any).vendor || "—",
      hardwareConcurrency: navigator.hardwareConcurrency || 0,
      deviceMemory: (navigator as any).deviceMemory || null,
@@ -131,6 +128,9 @@ export async function saveEvidence({
   // ISO 27037: Use provided fileHash (direct source) or compute one from textual input
   const sourceHash = fileHash || await generateSHA256(inputContent);
   const deviceInfo = getDeviceInfo();
+  const acquisitionTime = new Date();
+  const acquisitionTimeIso = acquisitionTime.toISOString();
+  const acquisitionTimeBr = acquisitionTime.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) + " (BRT)";
 
   const iso27037Metadata = {
     ...(metadata || {}),
@@ -143,18 +143,24 @@ export async function saveEvidence({
         reprodutibilidade: "Dados preservados em formato original",
         justificabilidade: "Ação registrada com agente e dispositivo identificados",
       },
+      timezone: "America/Sao_Paulo",
+      timezoneLabel: "BRT/UTC-3",
       acquisition: {
         method: filePath ? `Preservação de arquivo via módulo ${module}` : `Input textual via módulo ${module}`,
         agent: user.email,
         agentId: user.id,
-        timestamp: new Date().toISOString(),
+        timestamp: acquisitionTimeIso,
+        timestampBR: acquisitionTimeBr,
+        timezone: "America/Sao_Paulo",
         device: deviceInfo,
         hashAlgorithm: "SHA-256",
         hashValue: sourceHash,
       },
       chainOfCustody: {
         initialCustodian: user.email,
-        acquisitionTime: new Date().toISOString(),
+        acquisitionTime: acquisitionTimeIso,
+        acquisitionTimeBR: acquisitionTimeBr,
+        timezone: "America/Sao_Paulo",
         preservationMethod: "Armazenamento AES-256 em nuvem com logs de acesso imutáveis",
       },
     },
