@@ -322,8 +322,13 @@ export async function analyzeStructural(
   let done = 0;
   // Yield to the browser every N pairs so the tab stays responsive on huge
   // repos (1000+ files → millions of pair-token comparisons).
-  const YIELD_EVERY = 32;
+  const YIELD_EVERY = 8;
   const yieldToUI = () => new Promise<void>(r => setTimeout(r, 0));
+
+  // Emit an initial progress event so the UI can show the total pair count
+  // immediately, instead of waiting until the first YIELD_EVERY boundary.
+  opts.onProgress?.(0, totalPairs);
+  await yieldToUI();
 
   for (const fa of filesA) {
     for (const fb of filesB) {
