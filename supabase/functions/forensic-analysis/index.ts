@@ -213,7 +213,7 @@ Responda sempre em português do Brasil, com linguagem técnica apropriada para 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai/gpt-5.5",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
       }),
