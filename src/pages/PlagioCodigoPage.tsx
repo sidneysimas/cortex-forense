@@ -143,8 +143,8 @@ function detectProvider(url: string): Provider {
 // ── Repo fetchers ─────────────────────────────────────────────────────────────
 const CODE_EXTENSIONS = /\.(py|js|mjs|cjs|ts|tsx|jsx|java|c|cpp|cc|hh|hpp|h|cs|go|rs|php|swift|kt|kts|sql|sh|bash|zsh|lua|rb|r|scala|dart|vue|svelte|md|mdx|txt|yaml|yml|json|toml|ini|xml|html|css|scss)$/i;
 const IGNORE_PATHS    = /node_modules|dist|\.next|build|__pycache__|\.git|vendor|coverage/;
-const MAX_FILES = 30;
-const MAX_DEPTH = 3;
+const MAX_FILES = Number.POSITIVE_INFINITY;
+const MAX_DEPTH = 8;
 const MAX_FILE_CHARS = 8000;
 
 async function fetchGitHubRepo(url: string, token?: string, strict = false): Promise<string> {
@@ -609,9 +609,9 @@ ${codeB.slice(0, 18000)}`;
             <div className="flex items-start gap-2 text-[11px] text-white/30 bg-white/[0.02] rounded-xl p-3">
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
               <span>
-                Análise profunda: até {MAX_FILES} arquivos por fonte, profundidade {MAX_DEPTH} níveis.
+                Análise profunda: <strong className="text-white/40">sem limite de quantidade de arquivos</strong> por fonte (profundidade até {MAX_DEPTH} níveis).
                 Suporta <strong className="text-white/40">GitHub</strong>, <strong className="text-orange-400/60">GitLab</strong> (cloud e self-hosted) e <strong className="text-white/40">upload local</strong> (.zip ou arquivos individuais).
-                Detecta plágio cross-language (Python→JS, Java→C#, etc.).
+                Metodologia científica: tokenização estrutural estilo <strong className="text-white/60">JPlag</strong> (Greedy String Tiling) + parecer forense por LLM. Detecta plágio cross-language (Python→JS, Java→C#, etc.).
               </span>
             </div>
 
