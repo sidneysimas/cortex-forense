@@ -128,7 +128,7 @@ serve(async (req) => {
   .field { margin-bottom: 4px; }
   .field-label { font-weight: bold; color: #444; }
   .hash-box { background: #f5f5f5; border: 1px solid #ddd; padding: 8px; font-family: 'Courier New', monospace; font-size: 8pt; word-break: break-all; border-radius: 4px; }
-  .content-box { background: #fafafa; border: 1px solid #eee; padding: 10px; font-size: 9pt; max-height: 300px; overflow: hidden; border-radius: 4px; white-space: pre-wrap; }
+  .content-box { background: #fafafa; border: 1px solid #eee; padding: 10px; font-size: 9pt; overflow: visible; border-radius: 4px; white-space: pre-wrap; word-break: break-word; page-break-inside: auto; }
   .footer { margin-top: 30px; border-top: 2px solid #E87C1E; padding-top: 10px; text-align: center; font-size: 8pt; color: #888; }
   .qr-section { display: flex; align-items: center; gap: 15px; margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 8px; }
   .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 48pt; color: rgba(232, 124, 30, 0.06); font-weight: bold; white-space: nowrap; pointer-events: none; z-index: -1; }
