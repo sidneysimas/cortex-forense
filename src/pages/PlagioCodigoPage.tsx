@@ -676,9 +676,22 @@ ${codeB.slice(0, 18000)}`;
             <Button onClick={handleAnalyze} disabled={loading || !codeA || !codeB}
               className="w-full bg-primary text-black font-bold h-12 rounded-2xl hover:bg-white transition-all shadow-glow-md">
               {loading
-                ? <><Loader2 className="h-5 w-5 animate-spin mr-2" />Analisando semelhanças algorítmicas...</>
+                ? <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    {progress && progress.total > 0
+                      ? `Analisando estrutura ${Math.round((progress.done / progress.total) * 100)}% (${progress.done}/${progress.total} pares)`
+                      : "Preparando análise..."}
+                  </>
                 : <><Code2 className="h-5 w-5 mr-2" />Iniciar Análise Forense de Plágio</>}
             </Button>
+            {loading && progress && progress.total > 0 && (
+              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full bg-primary transition-all duration-200 shadow-glow-sm"
+                  style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
