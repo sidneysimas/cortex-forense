@@ -16,11 +16,11 @@ import { saveEvidence } from "@/lib/audit";
 import { supabase } from "@/integrations/supabase/client";
 import CaseSelector from "@/components/dashboard/CaseSelector";
 import {
-  analyzeStructural,
   formatEvidenceForLLM,
-  computeEvidenceHash,
   type StructuralReport,
 } from "@/lib/structural-plagiarism";
+import PlagiarismWorker from "@/workers/plagiarism-worker.ts?worker";
+import type { WorkerResponse } from "@/workers/plagiarism-worker";
 
 // ── Verdict helpers ───────────────────────────────────────────────────────────
 type Verdict = "CULPADO" | "SUSPEITO" | "NÃO CULPADO" | null;
@@ -356,6 +356,8 @@ const PlagioCodigoPage = () => {
   const [strictMode, setStrictMode] = useState(false);
   const [savedEvidenceId, setSavedEvidenceId] = useState<string | null>(null);
   const [generatingLaudo, setGeneratingLaudo] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const workerRef = useRef<Worker | null>(null);
 
   const { verdict, similarity } = parseVerdict(result);
 
@@ -402,32 +404,50 @@ const PlagioCodigoPage = () => {
     setStructural(null);
     setEvidenceHash(null);
     setSavedEvidenceId(null);
+    setProgress({ done: 0, total: 0 });
 
     const techA = detectTechStack(codeA).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
     const techB = detectTechStack(codeB).map(e => LANG_MAP[e]?.label || e).join(", ") || "não identificada";
 
     // ─── Camada 1: análise estrutural determinística (estilo JPlag) ───
-    // Roda no browser, antes do LLM. Alimenta o prompt como evidência
-    // objetiva citável — conforme Manifesto Metodológico CortexForense.
+    // Roda em Web Worker (thread separada) — usa CPU completa sem travar UI.
+    // Alimenta o prompt como evidência objetiva citável conforme Manifesto.
     let report: StructuralReport | null = null;
     let hash: string | null = null;
     try {
-      report = await analyzeStructural(codeA, codeB, {
-        minMatch: "adaptive",
-        onProgress: (d, t) => {
-          // Progresso visível no botão via título da aba (barato, não re-renderiza)
-          if (t > 0 && d % 256 === 0) {
-            document.title = `Analisando ${Math.round((d / t) * 100)}%… · CortexForense`;
+      const workerResult = await new Promise<{ report: StructuralReport; hash: string }>((resolve, reject) => {
+        workerRef.current?.terminate();
+        const worker = new PlagiarismWorker();
+        workerRef.current = worker;
+        worker.onmessage = (ev: MessageEvent<WorkerResponse>) => {
+          const msg = ev.data;
+          if (msg.type === "progress") {
+            setProgress({ done: msg.done, total: msg.total });
+          } else if (msg.type === "done") {
+            worker.terminate();
+            workerRef.current = null;
+            resolve({ report: msg.report, hash: msg.hash });
+          } else if (msg.type === "error") {
+            worker.terminate();
+            workerRef.current = null;
+            reject(new Error(msg.message));
           }
-        },
+        };
+        worker.onerror = (err) => {
+          worker.terminate();
+          workerRef.current = null;
+          reject(new Error(err.message || "Worker error"));
+        };
+        worker.postMessage({ type: "analyze", bundleA: codeA, bundleB: codeB });
       });
-      document.title = "CortexForense";
+      report = workerResult.report;
+      hash = workerResult.hash;
       setStructural(report);
-      hash = await computeEvidenceHash(codeA, codeB);
       setEvidenceHash(hash);
     } catch (e) {
-      document.title = "CortexForense";
       console.warn("Falha na análise estrutural:", e);
+    } finally {
+      setProgress(null);
     }
     const evidenceBlock = report
       ? `${formatEvidenceForLLM(report)}\n- Hash SHA-256 da evidência (reprodutibilidade): ${hash ?? "n/d"}`
@@ -656,9 +676,22 @@ ${codeB.slice(0, 18000)}`;
             <Button onClick={handleAnalyze} disabled={loading || !codeA || !codeB}
               className="w-full bg-primary text-black font-bold h-12 rounded-2xl hover:bg-white transition-all shadow-glow-md">
               {loading
-                ? <><Loader2 className="h-5 w-5 animate-spin mr-2" />Analisando semelhanças algorítmicas...</>
+                ? <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    {progress && progress.total > 0
+                      ? `Analisando estrutura ${Math.round((progress.done / progress.total) * 100)}% (${progress.done}/${progress.total} pares)`
+                      : "Preparando análise..."}
+                  </>
                 : <><Code2 className="h-5 w-5 mr-2" />Iniciar Análise Forense de Plágio</>}
             </Button>
+            {loading && progress && progress.total > 0 && (
+              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full bg-primary transition-all duration-200 shadow-glow-sm"
+                  style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
