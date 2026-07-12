@@ -75,8 +75,7 @@ export async function parseImageFile(file: File): Promise<GeoExifRecord> {
   try {
     const thumb = await exifr.thumbnail(buf);
     if (thumb) {
-      const bytes = new Uint8Array(thumb as ArrayBufferLike);
-      const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "image/jpeg" });
+      const blob = new Blob([thumb as unknown as BlobPart], { type: "image/jpeg" });
       thumbnailUrl = URL.createObjectURL(blob);
     }
   } catch {}
