@@ -138,7 +138,7 @@ export default function ChromeDashboard({ report }: { report: ChromeReport }) {
               </tbody>
             </table>
             {l.logins.length > 30 && (
-              <p className="text-[10px] text-white/40 mt-2">Mostrando 30 de {l.logins.total ?? l.logins.length}. O parecer da IA considera todo o conjunto.</p>
+              <p className="text-[10px] text-white/40 mt-2">Mostrando 30 de {l.total}. O parecer da IA considera todo o conjunto.</p>
             )}
           </div>
         </div>
