@@ -5,7 +5,7 @@
    LayoutDashboard, LogOut, ChevronLeft, ChevronRight, Building2,
    UserCircle, Shield, Database, Camera, FileQuestion, Briefcase,
    Lock, Link2, BarChart3, History, Clock, ScanText, FileStack, Network, Monitor,
-  Search, Bell, Settings, Inbox, Sun, Moon
+  Search, Bell, Settings, Inbox, Sun, Moon, Chrome
  } from "lucide-react";
  import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +32,7 @@ const navItems = [
   { icon: ScanText, label: "OCR", path: "/dashboard/ocr" },
   { icon: Network, label: "Forense de Redes", path: "/dashboard/rede" },
   { icon: Monitor, label: "Event Log (EVTX)", path: "/dashboard/event-log" },
+  { icon: Chrome, label: "Chrome Forensics", path: "/dashboard/chrome" },
   { icon: FileQuestion, label: "Quesitos", path: "/dashboard/quesitos" },
 ];
 
