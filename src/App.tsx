@@ -36,6 +36,7 @@ import OcrPage from "./pages/OcrPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import NetworkForensicsPage from "./pages/NetworkForensicsPage";
 import EventLogPage from "./pages/EventLogPage";
+import ChromePage from "./pages/ChromePage";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import OrganizationPage from "./pages/OrganizationPage";
 import NotFound from "./pages/NotFound";
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/dashboard/quesitos" element={<Dashboard><QuesitosPage /></Dashboard>} />
             <Route path="/dashboard/rede" element={<Dashboard><NetworkForensicsPage /></Dashboard>} />
             <Route path="/dashboard/event-log" element={<Dashboard><EventLogPage /></Dashboard>} />
+            <Route path="/dashboard/chrome" element={<Dashboard><ChromePage /></Dashboard>} />
             <Route path="/dashboard/perfil" element={<Dashboard><ProfilePage /></Dashboard>} />
             <Route path="/dashboard/auditoria" element={<Dashboard><AuditPage /></Dashboard>} />
             <Route path="/dashboard/evidencias" element={<Dashboard><EvidencesPage /></Dashboard>} />
