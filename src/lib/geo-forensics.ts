@@ -60,13 +60,12 @@ export async function parseImageFile(file: File): Promise<GeoExifRecord> {
       gps: true,
       tiff: true,
       exif: true,
-      ifd0: true,
       xmp: true,
       icc: false,
       iptc: true,
       translateValues: true,
       reviveValues: true,
-    });
+    } as any);
     hasExif = !!exif && Object.keys(exif).length > 0;
   } catch {
     exif = null;
@@ -76,7 +75,8 @@ export async function parseImageFile(file: File): Promise<GeoExifRecord> {
   try {
     const thumb = await exifr.thumbnail(buf);
     if (thumb) {
-      const blob = new Blob([thumb], { type: "image/jpeg" });
+      const bytes = new Uint8Array(thumb as ArrayBufferLike);
+      const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "image/jpeg" });
       thumbnailUrl = URL.createObjectURL(blob);
     }
   } catch {}
