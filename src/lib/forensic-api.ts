@@ -10,7 +10,7 @@ export async function streamForensicAnalysis({
   onDone,
   onError,
 }: {
-  type: "grafotecnia" | "hives" | "documental" | "laudo" | "plagio-codigo" | "email-pst" | "chrome-forensics";
+  type: "grafotecnia" | "hives" | "documental" | "laudo" | "plagio-codigo" | "email-pst" | "chrome-forensics" | "geo-forensics";
   content: string;
   imageBase64?: string;
   onDelta: (text: string) => void;
