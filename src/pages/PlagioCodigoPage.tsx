@@ -912,6 +912,11 @@ ${codeExcerptB}`;
             </div>
           )}
 
+          {/* Inventário completo — todos os arquivos A e B com categoria e link para trechos */}
+          {structural && (
+            <FileInventoryPanel bundleA={codeA} bundleB={codeB} report={structural} />
+          )}
+
           <div className="flex-1 min-h-[400px] max-h-[700px] overflow-auto text-[13px] text-white/70 leading-relaxed whitespace-pre-wrap custom-scrollbar">
             {result ? (
               result.replace(/^VEREDITO:.*\n?/im, "").replace(/^SIMILARIDADE:.*\n?/im, "").trim()
