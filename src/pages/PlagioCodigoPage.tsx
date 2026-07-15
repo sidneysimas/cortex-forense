@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { saveEvidence } from "@/lib/audit";
 import { supabase } from "@/integrations/supabase/client";
 import CaseSelector from "@/components/dashboard/CaseSelector";
+import FileInventoryPanel from "@/components/plagio/FileInventoryPanel";
 import {
   formatEvidenceForLLM,
   buildFileInventory,
