@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import CaseSelector from "@/components/dashboard/CaseSelector";
 import {
   formatEvidenceForLLM,
+  buildFileInventory,
   type StructuralReport,
 } from "@/lib/structural-plagiarism";
 import PlagiarismWorker from "@/workers/plagiarism-worker.ts?worker";
@@ -509,6 +510,9 @@ const PlagioCodigoPage = () => {
     const evidenceBlock = report
       ? `${formatEvidenceForLLM(report)}\n- Hash SHA-256 da evidência (reprodutibilidade): ${hash ?? "n/d"}`
       : "";
+    const inventoryBlock = report
+      ? buildFileInventory(codeA, codeB, report)
+      : "";
     const relevantPaths = relevantPathsFromReport(report);
     const codeExcerptA = buildBalancedRepoExcerpt(codeA, relevantPaths);
     const codeExcerptB = buildBalancedRepoExcerpt(codeB, relevantPaths);
@@ -535,8 +539,14 @@ INSTRUÇÕES OBRIGATÓRIAS:
    identificados; a similaridade estrutural determinística tem precedência sobre a impressão textual.
    A tokenização já ignora nomes de variáveis, então blocos idênticos ali comprovam correspondência
    estrutural independentemente de renomeação.
+11. COBERTURA TOTAL DOS ARQUIVOS: o parecer DEVE mencionar TODOS os arquivos listados no INVENTÁRIO COMPLETO
+    abaixo, agrupando-os por classificação (IDÊNTICO / ALTA SIMILARIDADE / SIMILAR PARCIAL / DIVERGENTE /
+    SEM CORRESPONDÊNCIA). Arquivos sem correspondência estrutural também devem constar, ainda que apenas
+    listados na seção de "Arquivos exclusivos" ou equivalente. Não omita arquivo algum do inventário.
 
 ${evidenceBlock}
+
+${inventoryBlock}
 
 CÓDIGO A (${filesA} arquivos — tecnologias: ${techA}):
 ${codeExcerptA}

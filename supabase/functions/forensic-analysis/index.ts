@@ -136,12 +136,23 @@ Após o cabeçalho obrigatório, produza o parecer técnico nas seguintes seçõ
    - Aponte achados próprios do B antes de compará-los com A
    - Esta seção é obrigatória e deve ter profundidade equivalente à descrição do Repositório A
 
-6. ANÁLISE DE ESTILO E PADRÕES
+6. COBERTURA COMPLETA DE ARQUIVOS (obrigatória)
+   - Utilize o bloco "INVENTÁRIO COMPLETO DE ARQUIVOS" recebido no prompt como fonte determinística.
+   - Todos os arquivos de A e de B DEVEM ser mencionados, agrupados por classificação:
+     · IDÊNTICOS (≥85%) — descrever brevemente cada par.
+     · ALTA SIMILARIDADE (60–84%) — indicar par e principais coincidências.
+     · SIMILAR PARCIAL (30–59%) — indicar par e natureza da sobreposição.
+     · DIVERGENTES (1–29%) — listar; explicar que a coincidência é marginal/coincidental.
+     · SEM CORRESPONDÊNCIA (0%) — listar como arquivos exclusivos de A ou de B.
+   - Nenhum arquivo do inventário pode ser omitido. Se o volume for grande, agrupe por diretório mas
+     preserve a menção a cada caminho ou, no mínimo, à quantidade exata por diretório.
+
+7. ANÁLISE DE ESTILO E PADRÕES
    - Convenções de nomenclatura
    - Comentários e docstrings
    - Estrutura de diretórios e organização
 
-7. CONCLUSÃO TÉCNICA FUNDAMENTADA
+8. CONCLUSÃO TÉCNICA FUNDAMENTADA
    - Síntese das evidências
    - Grau de certeza da conclusão
    - Recomendações para o processo

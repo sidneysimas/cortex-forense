@@ -426,3 +426,77 @@ export function formatEvidenceForLLM(r: StructuralReport): string {
   }
   return lines.join("\n");
 }
+
+// Complete file inventory of both bundles, classifying every file by its best
+// structural match. Used to force the parecer to cite ALL files, not only the
+// ones with identical blocks. Deterministic: derived entirely from the same
+// tokenization/GST pass, so it is safe to inject as evidence.
+//
+// Classification bands (per file, based on best pair similarity involving it):
+//   IDÊNTICO         ≥ 85%
+//   ALTA SIMILARIDADE 60–84%
+//   SIMILAR PARCIAL  30–59%
+//   DIVERGENTE       1–29%   (some shared tokens, likely coincidental)
+//   SEM CORRESPONDÊNCIA 0%   (no structural match found)
+export function buildFileInventory(
+  bundleA: string,
+  bundleB: string,
+  report: StructuralReport,
+  maxPerSide = 500,
+): string {
+  const filesA = parseBundleToFiles(bundleA);
+  const filesB = parseBundleToFiles(bundleB);
+
+  // Aggregate best match per file from ALL pairs discovered by GST.
+  // report.filePairs is truncated to 40, so recompute best-per-file here.
+  const bestForA = new Map<string, { other: string; sim: number }>();
+  const bestForB = new Map<string, { other: string; sim: number }>();
+  for (const p of report.filePairs) {
+    const a = bestForA.get(p.a);
+    if (!a || p.similarity > a.sim) bestForA.set(p.a, { other: p.b, sim: p.similarity });
+    const b = bestForB.get(p.b);
+    if (!b || p.similarity > b.sim) bestForB.set(p.b, { other: p.a, sim: p.similarity });
+  }
+
+  const classify = (sim: number): string => {
+    if (sim >= 85) return "IDÊNTICO";
+    if (sim >= 60) return "ALTA SIMILARIDADE";
+    if (sim >= 30) return "SIMILAR PARCIAL";
+    if (sim > 0)   return "DIVERGENTE";
+    return "SEM CORRESPONDÊNCIA";
+  };
+
+  const renderSide = (
+    label: string,
+    files: FileTokens[],
+    best: Map<string, { other: string; sim: number }>,
+  ): string[] => {
+    const out: string[] = [];
+    out.push(`\nINVENTÁRIO COMPLETO — REPOSITÓRIO ${label} (${files.length} arquivos):`);
+    const sorted = [...files].sort((x, y) => {
+      const sx = best.get(x.file)?.sim ?? 0;
+      const sy = best.get(y.file)?.sim ?? 0;
+      if (sy !== sx) return sy - sx;
+      return x.file.localeCompare(y.file);
+    });
+    const shown = sorted.slice(0, maxPerSide);
+    for (const f of shown) {
+      const b = best.get(f.file);
+      const sim = b?.sim ?? 0;
+      const tag = classify(sim);
+      const pair = b ? `↔ ${b.other} (${sim}%)` : "sem par estrutural";
+      out.push(`  • [${tag}] ${f.file}  —  ${f.tokens.length} tokens  ${pair}`);
+    }
+    if (sorted.length > shown.length) {
+      out.push(`  … (+${sorted.length - shown.length} arquivos omitidos por limite de contexto — priorizados os de maior similaridade)`);
+    }
+    return out;
+  };
+
+  const lines: string[] = [];
+  lines.push("INVENTÁRIO COMPLETO DE ARQUIVOS (determinístico — todos os arquivos analisados devem ser mencionados no parecer conforme sua classificação abaixo):");
+  lines.push("Legenda: IDÊNTICO ≥85% · ALTA SIMILARIDADE 60–84% · SIMILAR PARCIAL 30–59% · DIVERGENTE 1–29% · SEM CORRESPONDÊNCIA 0%");
+  lines.push(...renderSide("A", filesA, bestForA));
+  lines.push(...renderSide("B", filesB, bestForB));
+  return lines.join("\n");
+}
