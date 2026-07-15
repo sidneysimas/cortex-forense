@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { saveEvidence } from "@/lib/audit";
 import { supabase } from "@/integrations/supabase/client";
 import CaseSelector from "@/components/dashboard/CaseSelector";
+import FileInventoryPanel from "@/components/plagio/FileInventoryPanel";
 import {
   formatEvidenceForLLM,
   buildFileInventory,
@@ -909,6 +910,11 @@ ${codeExcerptB}`;
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Inventário completo — todos os arquivos A e B com categoria e link para trechos */}
+          {structural && (
+            <FileInventoryPanel bundleA={codeA} bundleB={codeB} report={structural} />
           )}
 
           <div className="flex-1 min-h-[400px] max-h-[700px] overflow-auto text-[13px] text-white/70 leading-relaxed whitespace-pre-wrap custom-scrollbar">
